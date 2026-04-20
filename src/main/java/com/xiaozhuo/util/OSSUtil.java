@@ -19,19 +19,29 @@ public class OSSUtil {
 
     static {
         try {
-            Properties prop = new Properties();
-            InputStream is = OSSUtil.class.getClassLoader().getResourceAsStream("db.properties");
-            if (is != null) {
-                prop.load(is);
-                endpoint = prop.getProperty("oss.endpoint", "");
-                accessKeyId = prop.getProperty("oss.accessKeyId", "");
-                accessKeySecret = prop.getProperty("oss.accessKeySecret", "");
-                bucketName = prop.getProperty("oss.bucketName", "");
-                domain = prop.getProperty("oss.domain", "");
+            endpoint = System.getenv("OSS_ENDPOINT");
+            accessKeyId = System.getenv("OSS_ACCESS_KEY_ID");
+            accessKeySecret = System.getenv("OSS_ACCESS_KEY_SECRET");
+            bucketName = System.getenv("OSS_BUCKET_NAME");
+            domain = System.getenv("OSS_DOMAIN");
 
-                if (!endpoint.isEmpty()) {
-                    System.out.println("OSS配置加载成功！");
+            if (endpoint == null || endpoint.isEmpty()) {
+                Properties prop = new Properties();
+                InputStream is = OSSUtil.class.getClassLoader().getResourceAsStream("db.properties");
+                if (is != null) {
+                    prop.load(is);
+                    endpoint = prop.getProperty("oss.endpoint", "");
+                    accessKeyId = prop.getProperty("oss.accessKeyId", "");
+                    accessKeySecret = prop.getProperty("oss.accessKeySecret", "");
+                    bucketName = prop.getProperty("oss.bucketName", "");
+                    domain = prop.getProperty("oss.domain", "");
                 }
+            }
+
+            if (endpoint != null && !endpoint.isEmpty()) {
+                System.out.println("OSS配置加载成功！");
+            } else {
+                System.err.println("警告: OSS配置未找到，请设置环境变量或配置文件");
             }
         } catch (IOException e) {
             e.printStackTrace();
