@@ -1,0 +1,89 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>cn.iocoder.boot</groupId>
+  <artifactId>saibo-pot</artifactId>
+  <packaging>war</packaging>
+  <version>1.0-SNAPSHOT</version>
+  <name>saibo-pot Maven Webapp</name>
+  <url>http://maven.apache.org</url>
+  <dependencies>
+    <dependency>
+      <groupId>junit</groupId>
+      <artifactId>junit</artifactId>
+      <version>4.13.2</version>
+      <scope>test</scope>
+    </dependency>
+
+      <!-- Servlet API 4.0.1（对应 Tomcat 9）-->
+      <dependency>
+          <groupId>javax.servlet</groupId>
+          <artifactId>javax.servlet-api</artifactId>
+          <version>4.0.1</version>
+          <scope>provided</scope>
+      </dependency>
+
+      <!-- MySQL驱动依赖（JDBC连接MySQL） -->
+      <dependency>
+          <groupId>mysql</groupId>
+          <artifactId>mysql-connector-java</artifactId>
+          <version>8.0.33</version>
+      </dependency>
+      <!-- 加密依赖（哈希加盐：MD5/SHA256，贴合密码加密需求） -->
+      <dependency>
+          <groupId>commons-codec</groupId>
+          <artifactId>commons-codec</artifactId>
+          <version>1.15</version>
+      </dependency>
+      <!-- 可选：lombok（简化实体类get/set，非必须，手写也可） -->
+      <dependency>
+          <groupId>org.projectlombok</groupId>
+          <artifactId>lombok</artifactId>
+          <version>1.18.30</version>
+          <scope>provided</scope>
+      </dependency>
+
+      <!-- pom.xml添加fastjson依赖（考核允许，非禁用框架） -->
+      <dependency>
+          <groupId>com.alibaba</groupId>
+          <artifactId>fastjson</artifactId>
+          <version>1.2.83</version>
+      </dependency>
+      <!-- Hutool 工具包（包含 JWT 支持） -->
+      <dependency>
+          <groupId>cn.hutool</groupId>
+          <artifactId>hutool-all</artifactId>
+          <version>5.8.23</version>
+      </dependency>
+
+      <!-- 阿里云OSS SDK -->
+      <dependency>
+          <groupId>com.aliyun.oss</groupId>
+          <artifactId>aliyun-sdk-oss</artifactId>
+          <version>3.17.1</version>
+      </dependency>
+
+      <!-- Redis客户端 Jedis -->
+      <dependency>
+          <groupId>redis.clients</groupId>
+          <artifactId>jedis</artifactId>
+          <version>4.4.3</version>
+      </dependency>
+
+      <!-- 文件上传组件 -->
+      <dependency>
+          <groupId>commons-fileupload</groupId>
+          <artifactId>commons-fileupload</artifactId>
+          <version>1.5</version>
+      </dependency>
+      <dependency>
+          <groupId>commons-io</groupId>
+          <artifactId>commons-io</artifactId>
+          <version>2.11.0</version>
+      </dependency>
+  </dependencies>
+
+  <build>
+    <finalName>saibo-pot</finalName>
+  </build>
+</project>
