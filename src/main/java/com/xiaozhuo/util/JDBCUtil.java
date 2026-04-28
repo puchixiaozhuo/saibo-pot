@@ -54,6 +54,54 @@ public class JDBCUtil {
         return DriverManager.getConnection(url, username, password);
     }
 
+
+    /**
+     * 获取原始数据库连接（用于连接池内部创建新连接）
+     * @return 数据库连接对象
+     * @throws SQLException 连接失败抛出异常
+     */
+    public static Connection getRawConnection() throws SQLException {
+        return DriverManager.getConnection(url, username, password);
+    }
+
+    /**
+     * 从连接池获取数据库连接（推荐使用）
+     * @return 数据库连接对象
+     * @throws SQLException 连接失败抛出异常
+     */
+    public static Connection getConnectionFromPool() throws SQLException {
+        return ConnectionPool.getConnection();
+    }
+
+    /**
+     * 归还连接到连接池
+     * @param conn 要归还的连接
+     */
+    public static void returnToPool(Connection conn) {
+        ConnectionPool.returnConnection(conn);
+    }
+
+    /**
+     * 获取配置属性值
+     * @param key 属性键
+     * @param defaultValue 默认值
+     * @return 属性值
+     */
+    public static String getProperty(String key, String defaultValue) {
+        try {
+            Properties prop = new Properties();
+            InputStream is = JDBCUtil.class.getClassLoader().getResourceAsStream("db.properties");
+            if (is == null) {
+                return defaultValue;
+            }
+            prop.load(is);
+            String value = prop.getProperty(key);
+            return value != null ? value : defaultValue;
+        } catch (IOException e) {
+            return defaultValue;
+        }
+    }
+
     /**
      * 关闭资源（重载：关闭连接、Statement、ResultSet）
      * @param conn 连接

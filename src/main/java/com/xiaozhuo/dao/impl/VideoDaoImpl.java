@@ -1,318 +1,412 @@
 package com.xiaozhuo.dao.impl;
 
+import com.xiaozhuo.annotation.Column;
+import com.xiaozhuo.annotation.TableName;
 import com.xiaozhuo.dao.VideoDao;
 import com.xiaozhuo.entity.VideoInfo;
-import com.xiaozhuo.util.JDBCUtil;
+import com.xiaozhuo.exception.DatabaseException;
+import com.xiaozhuo.util.ConnectionPool;
+import com.xiaozhuo.util.LogUtil;
 
-import java.sql.*;
-import java.util.ArrayList;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.logging.Logger;
 
-public class VideoDaoImpl implements VideoDao {
+/**
+ * VideoDao实现类 - 继承BaseDaoImpl并扩展特定方法
+ */
+public class VideoDaoImpl extends BaseDaoImpl<VideoInfo> implements VideoDao {
+
+    private static final Logger logger = LogUtil.getLogger(VideoDaoImpl.class);
+
+    public VideoDaoImpl() {
+        super(VideoInfo.class);
+    }
 
     @Override
     public int insert(VideoInfo video) {
-        String sql = "INSERT INTO video_info(author_id, title, cover, video_url, duration, file_size, format, resolution, cache_status, transcode_status, category_id, description) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)";
         Connection conn = null;
-        PreparedStatement pstmt = null;
         try {
-            conn = JDBCUtil.getConnection();
-            pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
-            pstmt.setLong(1, video.getAuthorId());
-            pstmt.setString(2, video.getTitle());
-            pstmt.setString(3, video.getCover());
-            pstmt.setString(4, video.getVideoUrl());
-            pstmt.setInt(5, video.getDuration() != null ? video.getDuration() : 0);
-            pstmt.setLong(6, video.getFileSize() != null ? video.getFileSize() : 0);
-            pstmt.setString(7, video.getFormat() != null ? video.getFormat() : "mp4");
-            pstmt.setString(8, video.getResolution() != null ? video.getResolution() : "1080p");
-            pstmt.setInt(9, video.getCacheStatus() != null ? video.getCacheStatus() : 0);
-            pstmt.setInt(10, video.getTranscodeStatus() != null ? video.getTranscodeStatus() : 0);
-            pstmt.setLong(11, video.getCategoryId());
-            pstmt.setString(12, video.getDescription());
-
-            int rows = pstmt.executeUpdate();
-            if (rows > 0) {
-                ResultSet rs = pstmt.getGeneratedKeys();
-                if (rs.next()) {
-                    video.setId(rs.getLong(1));
-                }
-            }
-            return rows;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return 0;
+            conn = ConnectionPool.getConnection();
+            return super.insert(conn, video);
+        } catch (Exception e) {
+            LogUtil.logError(logger, "插入视频失败", e);
+            throw new DatabaseException("插入视频失败", e);
         } finally {
-            JDBCUtil.close(conn, pstmt);
+            if (conn != null) {
+                ConnectionPool.returnConnection(conn);
+            }
         }
     }
 
     @Override
     public int update(VideoInfo video) {
-        String sql = "UPDATE video_info SET title=?, cover=?, video_url=?, duration=?, file_size=?, format=?, resolution=?, cache_status=?, transcode_status=?, category_id=?, description=? WHERE id=?";
         Connection conn = null;
-        PreparedStatement pstmt = null;
         try {
-            conn = JDBCUtil.getConnection();
-            pstmt = conn.prepareStatement(sql);
-            pstmt.setString(1, video.getTitle());
-            pstmt.setString(2, video.getCover());
-            pstmt.setString(3, video.getVideoUrl());
-            pstmt.setInt(4, video.getDuration());
-            pstmt.setLong(5, video.getFileSize());
-            pstmt.setString(6, video.getFormat());
-            pstmt.setString(7, video.getResolution());
-            pstmt.setInt(8, video.getCacheStatus());
-            pstmt.setInt(9, video.getTranscodeStatus());
-            pstmt.setLong(10, video.getCategoryId());
-            pstmt.setString(11, video.getDescription());
-            pstmt.setLong(12, video.getId());
-            return pstmt.executeUpdate();
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return 0;
+            conn = ConnectionPool.getConnection();
+            return super.update(conn, video);
+        } catch (Exception e) {
+            LogUtil.logError(logger, "更新视频失败", e);
+            throw new DatabaseException("更新视频失败", e);
         } finally {
-            JDBCUtil.close(conn, pstmt);
+            if (conn != null) {
+                ConnectionPool.returnConnection(conn);
+            }
         }
     }
 
     @Override
     public int deleteById(Long id) {
-        String sql = "UPDATE video_info SET is_delete=1 WHERE id=?";
         Connection conn = null;
-        PreparedStatement pstmt = null;
         try {
-            conn = JDBCUtil.getConnection();
-            pstmt = conn.prepareStatement(sql);
-            pstmt.setLong(1, id);
-            return pstmt.executeUpdate();
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return 0;
+            conn = ConnectionPool.getConnection();
+            return super.deleteById(conn, id);
+        } catch (Exception e) {
+            LogUtil.logError(logger, "删除视频失败: id=" + id, e);
+            throw new DatabaseException("删除视频失败", e);
         } finally {
-            JDBCUtil.close(conn, pstmt);
+            if (conn != null) {
+                ConnectionPool.returnConnection(conn);
+            }
         }
     }
 
     @Override
     public VideoInfo selectById(Long id) {
-        String sql = "SELECT * FROM video_info WHERE id=? AND is_delete=0";
         Connection conn = null;
-        PreparedStatement pstmt = null;
-        ResultSet rs = null;
         try {
-            conn = JDBCUtil.getConnection();
-            pstmt = conn.prepareStatement(sql);
-            pstmt.setLong(1, id);
-            rs = pstmt.executeQuery();
-            if (rs.next()) {
-                return mapRowToVideo(rs);
-            }
-            return null;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return null;
+            conn = ConnectionPool.getConnection();
+            return super.findById(conn, id);
+        } catch (Exception e) {
+            LogUtil.logError(logger, "查询视频失败: id=" + id, e);
+            throw new DatabaseException("查询视频失败", e);
         } finally {
-            JDBCUtil.close(conn, pstmt, rs);
+            if (conn != null) {
+                ConnectionPool.returnConnection(conn);
+            }
         }
     }
 
     @Override
     public List<VideoInfo> selectAll(int pageNum, int pageSize) {
-        String sql = "SELECT * FROM video_info WHERE is_delete=0 ORDER BY create_time DESC LIMIT ?,?";
-        return queryVideos(sql, (pageNum - 1) * pageSize, pageSize);
+        Connection conn = null;
+        try {
+            conn = ConnectionPool.getConnection();
+            return findByPage(conn, pageNum, pageSize);
+        } catch (Exception e) {
+            LogUtil.logError(logger, "查询视频列表失败", e);
+            throw new DatabaseException("查询视频列表失败", e);
+        } finally {
+            if (conn != null) {
+                ConnectionPool.returnConnection(conn);
+            }
+        }
     }
 
     @Override
     public List<VideoInfo> selectByAuthorId(Long authorId, int pageNum, int pageSize) {
-        String sql = "SELECT * FROM video_info WHERE author_id=? AND is_delete=0 ORDER BY create_time DESC LIMIT ?,?";
-        return queryVideos(sql, authorId, (pageNum - 1) * pageSize, pageSize);
+        Connection conn = null;
+        try {
+            conn = ConnectionPool.getConnection();
+            Map<String, Object> conditions = new HashMap<>();
+            conditions.put("author_id", authorId);
+            conditions.put("is_delete", 0);
+            return findByCondition(conn, conditions);
+        } catch (Exception e) {
+            LogUtil.logError(logger, "根据作者ID查询视频失败: authorId=" + authorId, e);
+            throw new DatabaseException("根据作者ID查询视频失败", e);
+        } finally {
+            if (conn != null) {
+                ConnectionPool.returnConnection(conn);
+            }
+        }
     }
 
     @Override
     public List<VideoInfo> selectByCategoryId(Long categoryId, int pageNum, int pageSize) {
-        String sql = "SELECT * FROM video_info WHERE category_id=? AND is_delete=0 ORDER BY create_time DESC LIMIT ?,?";
-        return queryVideos(sql, categoryId, (pageNum - 1) * pageSize, pageSize);
+        Connection conn = null;
+        try {
+            conn = ConnectionPool.getConnection();
+            Map<String, Object> conditions = new HashMap<>();
+            conditions.put("category_id", categoryId);
+            conditions.put("is_delete", 0);
+            return findByCondition(conn, conditions);
+        } catch (Exception e) {
+            LogUtil.logError(logger, "根据分类ID查询视频失败: categoryId=" + categoryId, e);
+            throw new DatabaseException("根据分类ID查询视频失败", e);
+        } finally {
+            if (conn != null) {
+                ConnectionPool.returnConnection(conn);
+            }
+        }
     }
 
     @Override
     public List<VideoInfo> searchByTitle(String keyword, int pageNum, int pageSize) {
-        String sql = "SELECT * FROM video_info WHERE title LIKE ? AND is_delete=0 ORDER BY create_time DESC LIMIT ?,?";
-        return queryVideos(sql, "%" + keyword + "%", (pageNum - 1) * pageSize, pageSize);
+        Connection conn = null;
+        try {
+            conn = ConnectionPool.getConnection();
+            String sql = "SELECT * FROM video_info WHERE title LIKE ? AND is_delete = 0 ORDER BY create_time DESC LIMIT ? OFFSET ?";
+
+            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                pstmt.setString(1, "%" + keyword + "%");
+                pstmt.setInt(2, pageSize);
+                pstmt.setInt(3, (pageNum - 1) * pageSize);
+
+                try (ResultSet rs = pstmt.executeQuery()) {
+                    return mapResultSetToList(rs);
+                }
+            }
+        } catch (SQLException e) {
+            LogUtil.logError(logger, "搜索视频失败: keyword=" + keyword, e);
+            throw new DatabaseException("搜索视频失败", e);
+        } finally {
+            if (conn != null) {
+                ConnectionPool.returnConnection(conn);
+            }
+        }
     }
 
     @Override
     public int countAll() {
-        String sql = "SELECT COUNT(*) FROM video_info WHERE is_delete=0";
-        return count(sql);
+        Connection conn = null;
+        try {
+            conn = ConnectionPool.getConnection();
+            return (int) super.count(conn);
+        } catch (Exception e) {
+            LogUtil.logError(logger, "统计视频数量失败", e);
+            throw new DatabaseException("统计视频数量失败", e);
+        } finally {
+            if (conn != null) {
+                ConnectionPool.returnConnection(conn);
+            }
+        }
     }
 
     @Override
     public int countByAuthorId(Long authorId) {
-        String sql = "SELECT COUNT(*) FROM video_info WHERE author_id=? AND is_delete=0";
-        return count(sql, authorId);
+        Connection conn = null;
+        try {
+            conn = ConnectionPool.getConnection();
+            Map<String, Object> conditions = new HashMap<>();
+            conditions.put("author_id", authorId);
+            conditions.put("is_delete", 0);
+            return findByCondition(conn, conditions).size();
+        } catch (Exception e) {
+            LogUtil.logError(logger, "统计作者视频数量失败: authorId=" + authorId, e);
+            throw new DatabaseException("统计作者视频数量失败", e);
+        } finally {
+            if (conn != null) {
+                ConnectionPool.returnConnection(conn);
+            }
+        }
     }
 
     @Override
     public int countByCategoryId(Long categoryId) {
-        String sql = "SELECT COUNT(*) FROM video_info WHERE category_id=? AND is_delete=0";
-        return count(sql, categoryId);
+        Connection conn = null;
+        try {
+            conn = ConnectionPool.getConnection();
+            Map<String, Object> conditions = new HashMap<>();
+            conditions.put("category_id", categoryId);
+            conditions.put("is_delete", 0);
+            return findByCondition(conn, conditions).size();
+        } catch (Exception e) {
+            LogUtil.logError(logger, "统计分类视频数量失败: categoryId=" + categoryId, e);
+            throw new DatabaseException("统计分类视频数量失败", e);
+        } finally {
+            if (conn != null) {
+                ConnectionPool.returnConnection(conn);
+            }
+        }
     }
 
     @Override
     public int incrementViewCount(Long id) {
-        String sql = "UPDATE video_info SET view_count=view_count+1 WHERE id=?";
-        return executeUpdate(sql, id);
+        Connection conn = null;
+        try {
+            conn = ConnectionPool.getConnection();
+            VideoInfo video = findById(conn, id);
+            if (video != null) {
+                video.setViewCount(video.getViewCount() + 1);
+                return update(conn, video);
+            }
+            return 0;
+        } catch (Exception e) {
+            LogUtil.logError(logger, "增加播放量失败: id=" + id, e);
+            throw new DatabaseException("增加播放量失败", e);
+        } finally {
+            if (conn != null) {
+                ConnectionPool.returnConnection(conn);
+            }
+        }
     }
 
     @Override
     public int decrementViewCount(Long id) {
-        String sql = "UPDATE video_info SET view_count=GREATEST(view_count-1,0) WHERE id=?";
-        return executeUpdate(sql, id);
+        Connection conn = null;
+        try {
+            conn = ConnectionPool.getConnection();
+            VideoInfo video = findById(conn, id);
+            if (video != null && video.getViewCount() > 0) {
+                video.setViewCount(video.getViewCount() - 1);
+                return update(conn, video);
+            }
+            return 0;
+        } catch (Exception e) {
+            LogUtil.logError(logger, "减少播放量失败: id=" + id, e);
+            throw new DatabaseException("减少播放量失败", e);
+        } finally {
+            if (conn != null) {
+                ConnectionPool.returnConnection(conn);
+            }
+        }
     }
+
     @Override
     public int incrementLikeCount(Long id) {
-        String sql = "UPDATE video_info SET like_count=like_count+1 WHERE id=?";
-        return executeUpdate(sql, id);
+        Connection conn = null;
+        try {
+            conn = ConnectionPool.getConnection();
+            VideoInfo video = findById(conn, id);
+            if (video != null) {
+                video.setLikeCount(video.getLikeCount() + 1);
+                return update(conn, video);
+            }
+            return 0;
+        } catch (Exception e) {
+            LogUtil.logError(logger, "增加点赞数失败: id=" + id, e);
+            throw new DatabaseException("增加点赞数失败", e);
+        } finally {
+            if (conn != null) {
+                ConnectionPool.returnConnection(conn);
+            }
+        }
     }
 
     @Override
     public int decrementLikeCount(Long id) {
-        String sql = "UPDATE video_info SET like_count=GREATEST(like_count-1,0) WHERE id=?";
-        return executeUpdate(sql, id);
+        Connection conn = null;
+        try {
+            conn = ConnectionPool.getConnection();
+            VideoInfo video = findById(conn, id);
+            if (video != null && video.getLikeCount() > 0) {
+                video.setLikeCount(video.getLikeCount() - 1);
+                return update(conn, video);
+            }
+            return 0;
+        } catch (Exception e) {
+            LogUtil.logError(logger, "减少点赞数失败: id=" + id, e);
+            throw new DatabaseException("减少点赞数失败", e);
+        } finally {
+            if (conn != null) {
+                ConnectionPool.returnConnection(conn);
+            }
+        }
     }
 
     @Override
     public int incrementCommentCount(Long id) {
-        String sql = "UPDATE video_info SET comment_count=comment_count+1 WHERE id=?";
-        return executeUpdate(sql, id);
+        Connection conn = null;
+        try {
+            conn = ConnectionPool.getConnection();
+            VideoInfo video = findById(conn, id);
+            if (video != null) {
+                video.setCommentCount(video.getCommentCount() + 1);
+                return update(conn, video);
+            }
+            return 0;
+        } catch (Exception e) {
+            LogUtil.logError(logger, "增加评论数失败: id=" + id, e);
+            throw new DatabaseException("增加评论数失败", e);
+        } finally {
+            if (conn != null) {
+                ConnectionPool.returnConnection(conn);
+            }
+        }
     }
 
     @Override
     public int decrementCommentCount(Long id) {
-        String sql = "UPDATE video_info SET comment_count=GREATEST(comment_count-1,0) WHERE id=?";
-        return executeUpdate(sql, id);
+        Connection conn = null;
+        try {
+            conn = ConnectionPool.getConnection();
+            VideoInfo video = findById(conn, id);
+            if (video != null && video.getCommentCount() > 0) {
+                video.setCommentCount(video.getCommentCount() - 1);
+                return update(conn, video);
+            }
+            return 0;
+        } catch (Exception e) {
+            LogUtil.logError(logger, "减少评论数失败: id=" + id, e);
+            throw new DatabaseException("减少评论数失败", e);
+        } finally {
+            if (conn != null) {
+                ConnectionPool.returnConnection(conn);
+            }
+        }
     }
 
     @Override
-    public Long getAuthorIdById(Connection conn, Long videoId) {
-        String sql = "SELECT author_id FROM video_info WHERE id = ? AND is_delete = 0";
-        PreparedStatement pstmt = null;
-        ResultSet rs = null;
-
+    public Long getAuthorIdById(java.sql.Connection conn, Long videoId) {
         try {
-            if (conn == null) {
-                conn = JDBCUtil.getConnection();
-            }
+            VideoInfo video = findById(conn, videoId);
+            return video != null ? video.getAuthorId() : null;
+        } catch (Exception e) {
+            LogUtil.logError(logger, "获取作者ID失败: videoId=" + videoId, e);
+            throw new DatabaseException("获取作者ID失败", e);
+        }
+    }
 
-            pstmt = conn.prepareStatement(sql);
-            pstmt.setLong(1, videoId);
-            rs = pstmt.executeQuery();
-
-            if (rs.next()) {
-                return rs.getLong("author_id");
-            }
-
-            return null;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return null;
-        } finally {
+    /**
+     * 将 ResultSet 映射为实体列表
+     */
+    private List<VideoInfo> mapResultSetToList(ResultSet rs) throws SQLException {
+        List<VideoInfo> list = new java.util.ArrayList<>();
+        while (rs.next()) {
             try {
-                if (rs != null) rs.close();
-                if (pstmt != null) pstmt.close();
-            } catch (SQLException e) {
-                e.printStackTrace();
+                list.add(mapResultSetToEntity(rs));
+            } catch (Exception e) {
+                LogUtil.logError(logger, "映射单条记录失败", e);
             }
         }
+        return list;
     }
 
-    private VideoInfo mapRowToVideo(ResultSet rs) throws SQLException {
-        VideoInfo video = new VideoInfo();
-        video.setId(rs.getLong("id"));
-        video.setAuthorId(rs.getLong("author_id"));
-        video.setTitle(rs.getString("title"));
-        video.setCover(rs.getString("cover"));
-        video.setVideoUrl(rs.getString("video_url"));
-        video.setDuration(rs.getInt("duration"));
-        video.setFileSize(rs.getLong("file_size"));
-        video.setFormat(rs.getString("format"));
-        video.setResolution(rs.getString("resolution"));
-        video.setCacheStatus(rs.getInt("cache_status"));
-        video.setTranscodeStatus(rs.getInt("transcode_status"));
-        video.setCategoryId(rs.getLong("category_id"));
-        video.setDescription(rs.getString("description"));
-        video.setViewCount(rs.getLong("view_count"));
-        video.setLikeCount(rs.getLong("like_count"));
-        video.setCommentCount(rs.getLong("comment_count"));
-        video.setCreateTime(rs.getTimestamp("create_time").toLocalDateTime());
-        video.setUpdateTime(rs.getTimestamp("update_time").toLocalDateTime());
-        video.setIsDelete(rs.getInt("is_delete"));
-        return video;
-    }
-
-    private List<VideoInfo> queryVideos(String sql, Object... params) {
-        Connection conn = null;
-        PreparedStatement pstmt = null;
-        ResultSet rs = null;
-        List<VideoInfo> videos = new ArrayList<>();
+    /**
+     * 将 ResultSet 映射为单个实体
+     */
+    private VideoInfo mapResultSetToEntity(ResultSet rs) throws SQLException {
         try {
-            conn = JDBCUtil.getConnection();
-            pstmt = conn.prepareStatement(sql);
-            for (int i = 0; i < params.length; i++) {
-                pstmt.setObject(i + 1, params[i]);
-            }
-            rs = pstmt.executeQuery();
-            while (rs.next()) {
-                videos.add(mapRowToVideo(rs));
-            }
-            return videos;
+            VideoInfo video = new VideoInfo();
+            video.setId(rs.getLong("id"));
+            video.setAuthorId(rs.getLong("author_id"));
+            video.setTitle(rs.getString("title"));
+            video.setDescription(rs.getString("description"));
+            video.setVideoUrl(rs.getString("video_url"));
+            video.setCover(rs.getString("cover"));
+            video.setCategoryId(rs.getLong("category_id"));
+            video.setResolution(rs.getString("resolution"));
+            video.setFileSize(rs.getLong("file_size"));
+            video.setFormat(rs.getString("format"));
+            video.setDuration(rs.getInt("duration"));
+            video.setViewCount(rs.getLong("view_count"));
+            video.setLikeCount(rs.getLong("like_count"));
+            video.setCommentCount(rs.getLong("comment_count"));
+            video.setCacheStatus(rs.getInt("cache_status"));
+            video.setTranscodeStatus(rs.getInt("transcode_status"));
+            video.setIsDelete(rs.getInt("is_delete"));
+            video.setCreateTime(rs.getTimestamp("create_time").toLocalDateTime());
+            video.setUpdateTime(rs.getTimestamp("update_time").toLocalDateTime());
+            return video;
         } catch (SQLException e) {
-            e.printStackTrace();
-            return videos;
-        } finally {
-            JDBCUtil.close(conn, pstmt, rs);
-        }
-    }
-
-    private int count(String sql, Object... params) {
-        Connection conn = null;
-        PreparedStatement pstmt = null;
-        ResultSet rs = null;
-        try {
-            conn = JDBCUtil.getConnection();
-            pstmt = conn.prepareStatement(sql);
-            for (int i = 0; i < params.length; i++) {
-                pstmt.setObject(i + 1, params[i]);
-            }
-            rs = pstmt.executeQuery();
-            if (rs.next()) {
-                return rs.getInt(1);
-            }
-            return 0;
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return 0;
-        } finally {
-            JDBCUtil.close(conn, pstmt, rs);
-        }
-    }
-
-    private int executeUpdate(String sql, Object... params) {
-        Connection conn = null;
-        PreparedStatement pstmt = null;
-        try {
-            conn = JDBCUtil.getConnection();
-            pstmt = conn.prepareStatement(sql);
-            for (int i = 0; i < params.length; i++) {
-                pstmt.setObject(i + 1, params[i]);
-            }
-            return pstmt.executeUpdate();
-        } catch (SQLException e) {
-            e.printStackTrace();
-            return 0;
-        } finally {
-            JDBCUtil.close(conn, pstmt);
+            LogUtil.logError(logger, "映射ResultSet失败", e);
+            throw e;
         }
     }
 }

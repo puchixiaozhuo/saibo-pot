@@ -2,146 +2,84 @@ package com.xiaozhuo.dao.impl;
 
 import com.xiaozhuo.dao.UserDao;
 import com.xiaozhuo.entity.User;
-import com.xiaozhuo.util.JDBCUtil;
+import com.xiaozhuo.exception.DatabaseException;
+import com.xiaozhuo.util.LogUtil;
 
-import java.sql.*;
+import java.sql.Connection;
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.logging.Logger;
 
 /**
  * 用户数据访问实现类
  */
-public class UserDaoImpl implements UserDao {
+public class UserDaoImpl extends BaseDaoImpl<User> implements UserDao {
 
-    @Override
-    public User findByUsername(Connection conn, String username) throws SQLException {
-        String sql = "SELECT id, username, password, salt, nickname, avatar, role, status, create_time, update_time " +
-                    "FROM sys_user WHERE username = ?";
+    private static final Logger logger = LogUtil.getLogger(UserDaoImpl.class);
 
-        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setString(1, username);
-
-            try (ResultSet rs = pstmt.executeQuery()) {
-                if (rs.next()) {
-                    User user = new User();
-                    user.setId(rs.getLong("id"));
-                    user.setUsername(rs.getString("username"));
-                    user.setPassword(rs.getString("password"));
-                    user.setSalt(rs.getString("salt"));
-                    user.setNickname(rs.getString("nickname"));
-                    user.setAvatar(rs.getString("avatar"));
-                    user.setRole(rs.getInt("role"));
-                    user.setStatus(rs.getInt("status"));
-
-                    // MySQL 8.0 的 LocalDateTime 支持
-                    Timestamp createTimeTs = rs.getTimestamp("create_time");
-                    if (createTimeTs != null) {
-                        user.setCreateTime(createTimeTs.toLocalDateTime());
-                    }
-
-                    Timestamp updateTimeTs = rs.getTimestamp("update_time");
-                    if (updateTimeTs != null) {
-                        user.setUpdateTime(updateTimeTs.toLocalDateTime());
-                    }
-
-                    return user;
-                }
-            }
-        }
-        return null;
+    public UserDaoImpl() {
+        super(User.class);
     }
 
+    /**
+     * 根据用户名查询用户
+     */
     @Override
-    public int insert(Connection conn, User user) throws SQLException {
-        String sql = "INSERT INTO sys_user (username, password, salt, nickname, avatar, role, status, create_time, update_time) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    public User findByUsername(Connection conn, String username) {
+        Map<String, Object> conditions = new HashMap<>();
+        conditions.put("username", username);
 
-        try (PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
-            pstmt.setString(1, user.getUsername());
-            pstmt.setString(2, user.getPassword());
-            pstmt.setString(3, user.getSalt());
-            pstmt.setString(4, user.getNickname());
-            pstmt.setString(5, user.getAvatar());
-            pstmt.setInt(6, user.getRole());
-            pstmt.setInt(7, user.getStatus());
-
-            // LocalDateTime 转 Timestamp
-            if (user.getCreateTime() != null) {
-                pstmt.setTimestamp(8, Timestamp.valueOf(user.getCreateTime()));
-            } else {
-                pstmt.setTimestamp(8, null);
-            }
-
-            if (user.getUpdateTime() != null) {
-                pstmt.setTimestamp(9, Timestamp.valueOf(user.getUpdateTime()));
-            } else {
-                pstmt.setTimestamp(9, null);
-            }
-
-            int rows = pstmt.executeUpdate();
-
-            // 获取自动生成的主键 ID
-            if (rows > 0) {
-                try (ResultSet generatedKeys = pstmt.getGeneratedKeys()) {
-                    if (generatedKeys.next()) {
-                        long generatedId = generatedKeys.getLong(1);
-                        user.setId(generatedId); // 将生成的 ID 设置回 user 对象
-                    }
-                }
-            }
-
-            return rows;
+        try {
+            List<User> users = findByCondition(conn, conditions);
+            return users.isEmpty() ? null : users.get(0);
+        } catch (Exception e) {
+            LogUtil.logError(logger, "根据用户名查询用户失败: username=" + username, e);
+            throw new DatabaseException("查询用户失败", e);
         }
     }
 
+    /**
+     * 插入新用户
+     */
     @Override
-    public User findById(Connection conn, Long id) throws SQLException {
-        String sql = "SELECT id, username, password, salt, nickname, avatar, role, status, create_time, update_time " +
-                "FROM sys_user WHERE id = ?";
-
-        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            pstmt.setLong(1, id);
-
-            try (ResultSet rs = pstmt.executeQuery()) {
-                if (rs.next()) {
-                    User user = new User();
-                    user.setId(rs.getLong("id"));
-                    user.setUsername(rs.getString("username"));
-                    user.setPassword(rs.getString("password"));
-                    user.setSalt(rs.getString("salt"));
-                    user.setNickname(rs.getString("nickname"));
-                    user.setAvatar(rs.getString("avatar"));
-                    user.setRole(rs.getInt("role"));
-                    user.setStatus(rs.getInt("status"));
-
-                    // MySQL 8.0 的 LocalDateTime 支持
-                    Timestamp createTimeTs = rs.getTimestamp("create_time");
-                    if (createTimeTs != null) {
-                        user.setCreateTime(createTimeTs.toLocalDateTime());
-                    }
-
-                    Timestamp updateTimeTs = rs.getTimestamp("update_time");
-                    if (updateTimeTs != null) {
-                        user.setUpdateTime(updateTimeTs.toLocalDateTime());
-                    }
-
-                    return user;
-                }
-            }
+    public int insert(Connection conn, User user) {
+        try {
+            return super.insert(conn, user);
+        } catch (Exception e) {
+            LogUtil.logError(logger, "插入用户失败: username=" + user.getUsername(), e);
+            throw new DatabaseException("插入用户失败", e);
         }
-        return null;
     }
-    @Override
-    public void updateLoginTime(Connection conn, Long userId, LocalDateTime lastLoginTime) throws SQLException {
-        String sql = "UPDATE sys_user SET update_time = ? WHERE id = ?";
 
-        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            if (lastLoginTime != null) {
-                pstmt.setTimestamp(1, Timestamp.valueOf(lastLoginTime));
-            } else {
-                pstmt.setTimestamp(1, null);
+    /**
+     * 根据用户 ID 查询用户
+     */
+    @Override
+    public User findById(Connection conn, Long id) {
+        try {
+            return super.findById(conn, id);
+        } catch (Exception e) {
+            LogUtil.logError(logger, "根据ID查询用户失败: id=" + id, e);
+            throw new DatabaseException("查询用户失败", e);
+        }
+    }
+
+    /**
+     * 更新用户登录时间
+     */
+    @Override
+    public void updateLoginTime(Connection conn, Long userId, LocalDateTime lastLoginTime) {
+        try {
+            User user = findById(conn, userId);
+            if (user != null) {
+                user.setUpdateTime(lastLoginTime);
+                super.update(conn, user);
             }
-            pstmt.setLong(2, userId);
-            pstmt.executeUpdate();
+        } catch (Exception e) {
+            LogUtil.logError(logger, "更新用户登录时间失败: userId=" + userId, e);
+            throw new DatabaseException("更新用户登录时间失败", e);
         }
     }
 }

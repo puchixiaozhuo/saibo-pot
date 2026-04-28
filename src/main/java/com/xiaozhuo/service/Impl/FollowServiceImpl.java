@@ -1,5 +1,7 @@
 package com.xiaozhuo.service.Impl;
 
+import com.xiaozhuo.annotation.Bean;
+import com.xiaozhuo.annotation.Transactional;
 import com.xiaozhuo.bean.vo.FollowVO;
 import com.xiaozhuo.dao.FollowDao;
 import com.xiaozhuo.dao.UserDao;
@@ -7,243 +9,247 @@ import com.xiaozhuo.dao.impl.FollowDaoImpl;
 import com.xiaozhuo.dao.impl.UserDaoImpl;
 import com.xiaozhuo.entity.User;
 import com.xiaozhuo.entity.UserFollow;
+import com.xiaozhuo.exception.BusinessException;
+import com.xiaozhuo.result.Result;
 import com.xiaozhuo.service.FollowService;
 import com.xiaozhuo.util.JDBCUtil;
+import com.xiaozhuo.util.TransactionManager;
 
 import java.sql.Connection;
 import java.time.LocalDateTime;
 import java.util.*;
 
+/**
+ * 关注业务实现类（优化版）
+ * 使用声明式事务 + IoC 容器管理
+ */
+@Bean
 public class FollowServiceImpl implements FollowService {
 
     private FollowDao followDao = new FollowDaoImpl();
     private UserDao userDao = new UserDaoImpl();
 
-        @Override
-    public Map<String, Object> followUser(Long userId, Long followId) {
-        Map<String, Object> result = new HashMap<>();
+    /**
+     * 关注用户（声明式事务）
+     */
+    @Override
+    @Transactional
+    public Result<Void> followUser(Long userId, Long followId) {
+        if (userId == null || followId == null) {
+            throw new BusinessException(400, "参数无效");
+        }
 
         if (userId.equals(followId)) {
-            result.put("code", 400);
-            result.put("message", "不能关注自己");
-            return result;
+            throw new BusinessException(400, "不能关注自己");
         }
 
-        Connection conn = null;
-        try {
-            conn = JDBCUtil.getConnection();
-            conn.setAutoCommit(false);
+        Connection conn = TransactionManager.getConnection();
 
-            UserFollow existFollow = followDao.selectByUserIdAndFollowId(conn, userId, followId);
-            if (existFollow != null) {
-                result.put("code", 400);
-                result.put("message", "已经关注过该用户");
-                conn.rollback();
-                return result;
-            }
-
-            User targetUser = userDao.findById(conn, followId);
-            if (targetUser == null) {
-                result.put("code", 404);
-                result.put("message", "目标用户不存在");
-                conn.rollback();
-                return result;
-            }
-
-            UserFollow userFollow = new UserFollow();
-            userFollow.setUserId(userId);
-            userFollow.setFollowId(followId);
-            userFollow.setCreateTime(LocalDateTime.now());
-
-            int rows = followDao.insert(conn, userFollow);
-            if (rows > 0) {
-                conn.commit();
-                result.put("code", 200);
-                result.put("message", "关注成功");
-                result.put("data", true);
-            } else {
-                conn.rollback();
-                result.put("code", 500);
-                result.put("message", "关注失败");
-            }
-        } catch (Exception e) {
-            try {
-                if (conn != null) {
-                    conn.rollback();
-                }
-            } catch (Exception ex) {
-                ex.printStackTrace();
-            }
-            e.printStackTrace();
-            result.put("code", 500);
-            result.put("message", "服务器错误：" + e.getMessage());
-        } finally {
-            JDBCUtil.close(conn, null);
+        UserFollow existFollow = followDao.selectByUserIdAndFollowId(conn, userId, followId);
+        if (existFollow != null) {
+            throw new BusinessException(400, "已经关注过该用户");
         }
-        return result;
+
+        User targetUser = userDao.findById(conn, followId);
+        if (targetUser == null) {
+            throw new BusinessException(404, "目标用户不存在");
+        }
+
+        UserFollow userFollow = new UserFollow();
+        userFollow.setUserId(userId);
+        userFollow.setFollowId(followId);
+        userFollow.setCreateTime(LocalDateTime.now());
+
+        int rows = followDao.insert(conn, userFollow);
+        if (rows > 0) {
+            return Result.success();
+        } else {
+            throw new BusinessException(500, "关注失败");
+        }
     }
-// ... existing code ...
+
+    /**
+     * 取消关注用户（声明式事务）
+     */
     @Override
-    public Map<String, Object> unfollowUser(Long userId, Long followId) {
-        Map<String, Object> result = new HashMap<>();
-        Connection conn = null;
-        try {
-            conn = JDBCUtil.getConnection();
-            conn.setAutoCommit(false);
-
-            UserFollow existFollow = followDao.selectByUserIdAndFollowId(conn, userId, followId);
-            if (existFollow == null) {
-                result.put("code", 400);
-                result.put("message", "未关注该用户");
-                conn.rollback();
-                return result;
-            }
-
-            int rows = followDao.deleteByUserIdAndFollowId(conn, userId, followId);
-            if (rows > 0) {
-                conn.commit();
-                result.put("code", 200);
-                result.put("message", "取消关注成功");
-                result.put("data", true);
-            } else {
-                conn.rollback();
-                result.put("code", 500);
-                result.put("message", "取消关注失败");
-            }
-        } catch (Exception e) {
-            try {
-                if (conn != null) {
-                    conn.rollback();
-                }
-            } catch (Exception ex) {
-                ex.printStackTrace();
-            }
-            e.printStackTrace();
-            result.put("code", 500);
-            result.put("message", "服务器错误：" + e.getMessage());
-        } finally {
-            JDBCUtil.close(conn, null);
+    @Transactional
+    public Result<Void> unfollowUser(Long userId, Long followId) {
+        if (userId == null || followId == null) {
+            throw new BusinessException(400, "参数无效");
         }
-        return result;
+
+        Connection conn = TransactionManager.getConnection();
+
+        UserFollow existFollow = followDao.selectByUserIdAndFollowId(conn, userId, followId);
+        if (existFollow == null) {
+            throw new BusinessException(400, "未关注该用户");
+        }
+
+        int rows = followDao.deleteByUserIdAndFollowId(conn, userId, followId);
+        if (rows > 0) {
+            return Result.success();
+        } else {
+            throw new BusinessException(500, "取消关注失败");
+        }
     }
-// ... existing code ...
+
+    /**
+     * 获取关注列表
+     */
     @Override
-    public Map<String, Object> getFollowingList(Long userId, int pageNum, int pageSize) {
-        Map<String, Object> result = new HashMap<>();
+    public Result<List<FollowVO>> getFollowingList(Long userId, int pageNum, int pageSize) {
+        if (userId == null || userId <= 0) {
+            throw new BusinessException(400, "用户ID无效");
+        }
+
+        if (pageNum < 1) pageNum = 1;
+        if (pageSize < 1 || pageSize > 100) pageSize = 10;
+
         Connection conn = null;
         try {
-            conn = JDBCUtil.getConnection();
+            conn = TransactionManager.getConnection();
+
             List<UserFollow> followingList = followDao.selectFollowingList(conn, userId, pageNum, pageSize);
-            int total = followDao.countFollowing(conn, userId);
+            List<FollowVO> voList = convertToFollowVOList(conn, userId, followingList);
 
-            List<FollowVO> voList = new ArrayList<>();
-            for (UserFollow follow : followingList) {
-                FollowVO vo = convertToFollowVO(conn, follow.getUserId(), follow.getFollowId());
-                voList.add(vo);
-            }
+            return Result.success("查询成功", voList);
 
-            result.put("code", 200);
-            result.put("message", "查询成功");
-            Map<String, Object> data = new HashMap<>();
-            data.put("list", voList);
-            data.put("total", total);
-            data.put("pageNum", pageNum);
-            data.put("pageSize", pageSize);
-            result.put("data", data);
         } catch (Exception e) {
-            e.printStackTrace();
-            result.put("code", 500);
-            result.put("message", "服务器错误：" + e.getMessage());
+            throw new BusinessException(500, "查询关注列表失败：" + e.getMessage());
         } finally {
-            JDBCUtil.close(conn, null);
+            if (conn != null && !TransactionManager.hasActiveTransaction()) {
+                JDBCUtil.returnToPool(conn);
+            }
         }
-        return result;
     }
-// ... existing code ...
+
+    /**
+     * 获取粉丝列表
+     */
     @Override
-    public Map<String, Object> getFollowerList(Long userId, int pageNum, int pageSize) {
-        Map<String, Object> result = new HashMap<>();
+    public Result<List<FollowVO>> getFollowerList(Long userId, int pageNum, int pageSize) {
+        if (userId == null || userId <= 0) {
+            throw new BusinessException(400, "用户ID无效");
+        }
+
+        if (pageNum < 1) pageNum = 1;
+        if (pageSize < 1 || pageSize > 100) pageSize = 10;
+
         Connection conn = null;
         try {
-            conn = JDBCUtil.getConnection();
+            conn = TransactionManager.getConnection();
+
             List<UserFollow> followerList = followDao.selectFollowerList(conn, userId, pageNum, pageSize);
-            int total = followDao.countFollower(conn, userId);
+            List<FollowVO> voList = convertToFollowVOListReverse(conn, userId, followerList);
 
-            List<FollowVO> voList = new ArrayList<>();
-            for (UserFollow follow : followerList) {
-                FollowVO vo = convertToFollowVO(conn, follow.getUserId(), follow.getFollowId());
-                voList.add(vo);
-            }
+            return Result.success("查询成功", voList);
 
-            result.put("code", 200);
-            result.put("message", "查询成功");
-            Map<String, Object> data = new HashMap<>();
-            data.put("list", voList);
-            data.put("total", total);
-            data.put("pageNum", pageNum);
-            data.put("pageSize", pageSize);
-            result.put("data", data);
         } catch (Exception e) {
-            e.printStackTrace();
-            result.put("code", 500);
-            result.put("message", "服务器错误：" + e.getMessage());
+            throw new BusinessException(500, "查询粉丝列表失败：" + e.getMessage());
         } finally {
-            JDBCUtil.close(conn, null);
+            if (conn != null && !TransactionManager.hasActiveTransaction()) {
+                JDBCUtil.returnToPool(conn);
+            }
         }
-        return result;
     }
-// ... existing code ...
+
+    /**
+     * 获取关注状态
+     */
     @Override
-    public Map<String, Object> getFollowStatus(Long userId, Long targetUserId) {
-        Map<String, Object> result = new HashMap<>();
+    public Result<Map<String, Object>> getFollowStatus(Long userId, Long targetUserId) {
+        if (userId == null || targetUserId == null) {
+            throw new BusinessException(400, "参数无效");
+        }
+
         Connection conn = null;
         try {
-            conn = JDBCUtil.getConnection();
+            conn = TransactionManager.getConnection();
+
             boolean isFollowing = followDao.isFollowing(conn, userId, targetUserId);
-            result.put("code", 200);
-            result.put("message", "查询成功");
+
             Map<String, Object> data = new HashMap<>();
             data.put("isFollowing", isFollowing);
-            result.put("data", data);
+
+            return Result.success("查询成功", data);
+
         } catch (Exception e) {
-            e.printStackTrace();
-            result.put("code", 500);
-            result.put("message", "服务器错误：" + e.getMessage());
+            throw new BusinessException(500, "查询关注状态失败：" + e.getMessage());
         } finally {
-            JDBCUtil.close(conn, null);
+            if (conn != null && !TransactionManager.hasActiveTransaction()) {
+                JDBCUtil.returnToPool(conn);
+            }
         }
-        return result;
     }
-// ... existing code ...
+
+    /**
+     * 获取关注数量
+     */
     @Override
-    public Map<String, Object> getFollowCounts(Long userId) {
-        Map<String, Object> result = new HashMap<>();
+    public Result<Map<String, Object>> getFollowCounts(Long userId) {
+        if (userId == null || userId <= 0) {
+            throw new BusinessException(400, "用户ID无效");
+        }
+
         Connection conn = null;
         try {
-            conn = JDBCUtil.getConnection();
+            conn = TransactionManager.getConnection();
+
             int followingCount = followDao.countFollowing(conn, userId);
             int followerCount = followDao.countFollower(conn, userId);
 
-            result.put("code", 200);
-            result.put("message", "查询成功");
             Map<String, Object> data = new HashMap<>();
             data.put("followingCount", followingCount);
             data.put("followerCount", followerCount);
-            result.put("data", data);
+
+            return Result.success("查询成功", data);
+
         } catch (Exception e) {
-            e.printStackTrace();
-            result.put("code", 500);
-            result.put("message", "服务器错误：" + e.getMessage());
+            throw new BusinessException(500, "查询关注数量失败：" + e.getMessage());
         } finally {
-            JDBCUtil.close(conn, null);
+            if (conn != null && !TransactionManager.hasActiveTransaction()) {
+                JDBCUtil.returnToPool(conn);
+            }
         }
-        return result;
     }
-// ... existing code ...
 
+    /**
+     * 将 UserFollow 列表转换为 FollowVO 列表（关注列表）
+     */
+    private List<FollowVO> convertToFollowVOList(Connection conn, Long currentUserId, List<UserFollow> follows) throws Exception {
+        List<FollowVO> voList = new ArrayList<>();
 
+        for (UserFollow follow : follows) {
+            FollowVO vo = convertToFollowVO(conn, currentUserId, follow.getFollowId());
+            voList.add(vo);
+        }
+
+        return voList;
+    }
+
+    /**
+     * 将 UserFollow 列表转换为 FollowVO 列表（粉丝列表）
+     */
+    private List<FollowVO> convertToFollowVOListReverse(Connection conn, Long currentUserId, List<UserFollow> follows) throws Exception {
+        List<FollowVO> voList = new ArrayList<>();
+
+        for (UserFollow follow : follows) {
+            FollowVO vo = convertToFollowVO(conn, currentUserId, follow.getUserId());
+            voList.add(vo);
+        }
+
+        return voList;
+    }
+
+    /**
+     * 将单个 UserFollow 转换为 FollowVO
+     */
     private FollowVO convertToFollowVO(Connection conn, Long currentUserId, Long targetUserId) throws Exception {
         User targetUser = userDao.findById(conn, targetUserId);
+        if (targetUser == null) {
+            throw new BusinessException(404, "用户不存在: " + targetUserId);
+        }
+
         FollowVO vo = new FollowVO();
         vo.setId(targetUserId);
         vo.setUserId(targetUserId);
@@ -253,6 +259,7 @@ public class FollowServiceImpl implements FollowService {
         vo.setFollowerCount((long) followDao.countFollower(conn, targetUserId));
         vo.setFollowingCount((long) followDao.countFollowing(conn, targetUserId));
         vo.setIsFollowed(followDao.isFollowing(conn, currentUserId, targetUserId));
+
         return vo;
     }
 }

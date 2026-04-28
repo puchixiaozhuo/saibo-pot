@@ -31,4 +31,12 @@ public interface UserService {
      * @param userId 用户ID
      * @return 用户信息
      */
-    Result<UserVO> getUserInfo(Long userId);}
+    Result<UserVO> getUserInfo(Long userId);
+
+    /**
+     * 刷新 Token
+     * @param refreshToken 刷新令牌
+     * @return 新的 Token 信息
+     */
+    Result<LoginVO> refreshToken(String refreshToken);
+}

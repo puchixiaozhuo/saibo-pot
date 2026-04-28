@@ -1,126 +1,169 @@
 package com.xiaozhuo.servlet.user;
 
 import com.alibaba.fastjson.JSON;
+import com.xiaozhuo.bean.vo.CommentVO;
+import com.xiaozhuo.config.AppStartupListener;
+import com.xiaozhuo.exception.BusinessException;
+import com.xiaozhuo.handler.GlobalExceptionHandler;
+import com.xiaozhuo.ioc.ApplicationContext;
+import com.xiaozhuo.result.Result;
 import com.xiaozhuo.service.CommentService;
-import com.xiaozhuo.service.Impl.CommentServiceImpl;
 
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.PrintWriter;
-import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
+/**
+ * 评论 Servlet（使用 IoC 容器 + 全局异常处理）
+ */
 @WebServlet("/api/comment/*")
 public class CommentServlet extends HttpServlet {
 
-    private CommentService commentService = new CommentServiceImpl();
+    private CommentService commentService;
 
+    @Override
+    public void init() throws ServletException {
+        super.init();
+
+        ApplicationContext context = AppStartupListener.applicationContext;
+        if (context != null) {
+            this.commentService = context.getBean(CommentService.class);
+        } else {
+            throw new ServletException("ApplicationContext not initialized");
+        }
+    }
+
+    /**
+     * GET 请求处理
+     * - /api/comment/video/{videoId} - 获取视频评论列表
+     * - /api/comment/user/{userId} - 获取用户评论列表
+     */
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        req.setCharacterEncoding("UTF-8");
         resp.setContentType("application/json;charset=UTF-8");
-        PrintWriter out = resp.getWriter();
-
-        String pathInfo = req.getPathInfo();
-        if (pathInfo == null) {
-            out.print(JSON.toJSONString(errorResult(400, "请求路径错误")));
-            return;
-        }
 
         try {
+            String pathInfo = req.getPathInfo();
+            if (pathInfo == null) {
+                throw new BusinessException(400, "请求路径错误");
+            }
+
             if (pathInfo.startsWith("/video/")) {
-                handleGetCommentsByVideo(req, pathInfo, out);
+                handleGetCommentsByVideo(req, pathInfo, resp);
             } else if (pathInfo.startsWith("/user/")) {
-                handleGetUserComments(req, pathInfo, out);
+                handleGetUserComments(req, pathInfo, resp);
             } else {
-                out.print(JSON.toJSONString(errorResult(404, "接口不存在")));
+                throw new BusinessException(404, "接口不存在");
             }
         } catch (Exception e) {
-            e.printStackTrace();
-            out.print(JSON.toJSONString(errorResult(500, "服务器内部错误：" + e.getMessage())));
+            GlobalExceptionHandler.handleException(resp, e, req.getRequestURI());
         }
     }
 
+    /**
+     * POST 请求处理
+     * - /api/comment/add - 添加评论
+     * - /api/comment/{commentId}/like - 点赞评论
+     * - /api/comment/{commentId}/unlike - 取消点赞
+     */
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        req.setCharacterEncoding("UTF-8");
         resp.setContentType("application/json;charset=UTF-8");
-        PrintWriter out = resp.getWriter();
-
-        Long userId = (Long) req.getAttribute("userId");
-        if (userId == null) {
-            out.print(JSON.toJSONString(errorResult(401, "未登录，请先登录")));
-            return;
-        }
-
-        String pathInfo = req.getPathInfo();
-        if (pathInfo == null) {
-            out.print(JSON.toJSONString(errorResult(400, "请求路径错误")));
-            return;
-        }
 
         try {
+            Long userId = (Long) req.getAttribute("userId");
+            if (userId == null) {
+                throw new BusinessException(401, "未登录，请先登录");
+            }
+
+            String pathInfo = req.getPathInfo();
+            if (pathInfo == null) {
+                throw new BusinessException(400, "请求路径错误");
+            }
+
             if (pathInfo.equals("/add")) {
-                handleAddComment(req, userId, out);
+                handleAddComment(req, userId, resp);
             } else if (pathInfo.matches("/\\d+/like")) {
                 Long commentId = Long.parseLong(pathInfo.substring(1, pathInfo.indexOf("/like")));
-                handleLikeComment(userId, commentId, out);
+                handleLikeComment(userId, commentId, resp);
             } else if (pathInfo.matches("/\\d+/unlike")) {
                 Long commentId = Long.parseLong(pathInfo.substring(1, pathInfo.indexOf("/unlike")));
-                handleUnlikeComment(userId, commentId, out);
+                handleUnlikeComment(userId, commentId, resp);
             } else {
-                out.print(JSON.toJSONString(errorResult(404, "接口不存在")));
+                throw new BusinessException(404, "接口不存在");
             }
         } catch (Exception e) {
-            e.printStackTrace();
-            out.print(JSON.toJSONString(errorResult(500, "服务器内部错误：" + e.getMessage())));
+            GlobalExceptionHandler.handleException(resp, e, req.getRequestURI());
         }
     }
 
+    /**
+     * DELETE 请求处理
+     * - /api/comment/{commentId} - 删除评论
+     */
     @Override
     protected void doDelete(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        req.setCharacterEncoding("UTF-8");
         resp.setContentType("application/json;charset=UTF-8");
-        PrintWriter out = resp.getWriter();
 
-        Long userId = (Long) req.getAttribute("userId");
-        if (userId == null) {
-            out.print(JSON.toJSONString(errorResult(401, "未登录，请先登录")));
-            return;
-        }
+        try {
+            Long userId = (Long) req.getAttribute("userId");
+            if (userId == null) {
+                throw new BusinessException(401, "未登录，请先登录");
+            }
 
-        String pathInfo = req.getPathInfo();
-        if (pathInfo != null && pathInfo.matches("/\\d+")) {
-            Long commentId = Long.parseLong(pathInfo.substring(1));
-            handleDeleteComment(userId, commentId, out);
-        } else {
-            out.print(JSON.toJSONString(errorResult(400, "请求路径错误")));
+            String pathInfo = req.getPathInfo();
+            if (pathInfo != null && pathInfo.matches("/\\d+")) {
+                Long commentId = Long.parseLong(pathInfo.substring(1));
+                handleDeleteComment(userId, commentId, resp);
+            } else {
+                throw new BusinessException(400, "请求路径错误");
+            }
+        } catch (Exception e) {
+            GlobalExceptionHandler.handleException(resp, e, req.getRequestURI());
         }
     }
 
-    private void handleAddComment(HttpServletRequest req, Long userId, PrintWriter out) throws IOException {
+    /**
+     * 添加评论
+     */
+    private void handleAddComment(HttpServletRequest req, Long userId, HttpServletResponse resp) throws IOException {
+        BufferedReader reader = req.getReader();
         StringBuilder sb = new StringBuilder();
         String line;
-        while ((line = req.getReader().readLine()) != null) {
+        while ((line = reader.readLine()) != null) {
             sb.append(line);
         }
 
         Map<String, Object> requestBody = JSON.parseObject(sb.toString(), Map.class);
+
+        if (!requestBody.containsKey("videoId") || !requestBody.containsKey("content")) {
+            throw new BusinessException(400, "视频ID和评论内容不能为空");
+        }
+
         Long videoId = Long.valueOf(requestBody.get("videoId").toString());
         String content = (String) requestBody.get("content");
         Long parentId = requestBody.containsKey("parentId") ? Long.valueOf(requestBody.get("parentId").toString()) : 0L;
 
-        Map<String, Object> result = commentService.addComment(userId, videoId, content, parentId);
-        out.print(JSON.toJSONString(result));
+        Result<Map<String, Object>> result = commentService.addComment(userId, videoId, content, parentId);
+        resp.getWriter().write(JSON.toJSONString(result));
     }
 
-    private void handleGetCommentsByVideo(HttpServletRequest req, String pathInfo, PrintWriter out) {
+    /**
+     * 获取视频评论列表
+     */
+    private void handleGetCommentsByVideo(HttpServletRequest req, String pathInfo, HttpServletResponse resp) throws IOException {
         try {
             String[] parts = pathInfo.split("/");
+            if (parts.length < 3) {
+                throw new BusinessException(400, "视频ID不能为空");
+            }
+
             Long videoId = Long.parseLong(parts[2]);
             int pageNum = getIntParameter(req, "pageNum", 1);
             int pageSize = getIntParameter(req, "pageSize", 10);
@@ -129,42 +172,61 @@ public class CommentServlet extends HttpServlet {
                 sortBy = "hot";
             }
 
-            Map<String, Object> result = commentService.getCommentsByVideoId(videoId, pageNum, pageSize, sortBy);
-            out.print(JSON.toJSONString(result));
-        } catch (Exception e) {
-            out.print(JSON.toJSONString(errorResult(400, "参数错误")));
+            Result<List<CommentVO>> result = commentService.getCommentsByVideoId(videoId, pageNum, pageSize, sortBy);
+            resp.getWriter().write(JSON.toJSONString(result));
+        } catch (NumberFormatException e) {
+            throw new BusinessException(400, "视频ID格式错误");
         }
     }
 
-    private void handleDeleteComment(Long userId, Long commentId, PrintWriter out) {
-        Map<String, Object> result = commentService.deleteComment(userId, commentId);
-        out.print(JSON.toJSONString(result));
+    /**
+     * 删除评论
+     */
+    private void handleDeleteComment(Long userId, Long commentId, HttpServletResponse resp) throws IOException {
+        Result<Void> result = commentService.deleteComment(userId, commentId);
+        resp.getWriter().write(JSON.toJSONString(result));
     }
 
-    private void handleLikeComment(Long userId, Long commentId, PrintWriter out) {
-        Map<String, Object> result = commentService.likeComment(userId, commentId);
-        out.print(JSON.toJSONString(result));
+    /**
+     * 点赞评论
+     */
+    private void handleLikeComment(Long userId, Long commentId, HttpServletResponse resp) throws IOException {
+        Result<Void> result = commentService.likeComment(userId, commentId);
+        resp.getWriter().write(JSON.toJSONString(result));
     }
 
-    private void handleUnlikeComment(Long userId, Long commentId, PrintWriter out) {
-        Map<String, Object> result = commentService.unlikeComment(userId, commentId);
-        out.print(JSON.toJSONString(result));
+    /**
+     * 取消点赞评论
+     */
+    private void handleUnlikeComment(Long userId, Long commentId, HttpServletResponse resp) throws IOException {
+        Result<Void> result = commentService.unlikeComment(userId, commentId);
+        resp.getWriter().write(JSON.toJSONString(result));
     }
 
-    private void handleGetUserComments(HttpServletRequest req, String pathInfo, PrintWriter out) {
+    /**
+     * 获取用户评论列表
+     */
+    private void handleGetUserComments(HttpServletRequest req, String pathInfo, HttpServletResponse resp) throws IOException {
         try {
             String[] parts = pathInfo.split("/");
+            if (parts.length < 3) {
+                throw new BusinessException(400, "用户ID不能为空");
+            }
+
             Long userId = Long.parseLong(parts[2]);
             int pageNum = getIntParameter(req, "pageNum", 1);
             int pageSize = getIntParameter(req, "pageSize", 10);
 
-            Map<String, Object> result = commentService.getUserComments(userId, pageNum, pageSize);
-            out.print(JSON.toJSONString(result));
-        } catch (Exception e) {
-            out.print(JSON.toJSONString(errorResult(400, "参数错误")));
+            Result<List<CommentVO>> result = commentService.getUserComments(userId, pageNum, pageSize);
+            resp.getWriter().write(JSON.toJSONString(result));
+        } catch (NumberFormatException e) {
+            throw new BusinessException(400, "用户ID格式错误");
         }
     }
 
+    /**
+     * 获取整数参数
+     */
     private int getIntParameter(HttpServletRequest req, String name, int defaultValue) {
         String value = req.getParameter(name);
         if (value != null && !value.isEmpty()) {
@@ -175,12 +237,5 @@ public class CommentServlet extends HttpServlet {
             }
         }
         return defaultValue;
-    }
-
-    private Map<String, Object> errorResult(int code, String message) {
-        Map<String, Object> result = new HashMap<>();
-        result.put("code", code);
-        result.put("message", message);
-        return result;
     }
 }

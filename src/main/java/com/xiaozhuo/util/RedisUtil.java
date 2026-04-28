@@ -1,12 +1,19 @@
 package com.xiaozhuo.util;
 
+import com.xiaozhuo.dao.CommentDao;
+import com.xiaozhuo.dao.impl.CommentDaoImpl;
+import com.xiaozhuo.entity.VideoComment;
+import com.xiaozhuo.exception.DatabaseException;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPoolConfig;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.sql.*;
+import java.util.List;
 import java.util.Properties;
+import java.util.logging.Logger;
 
 public class RedisUtil {
     private static JedisPool jedisPool;
@@ -130,4 +137,23 @@ public class RedisUtil {
             close(jedis);
         }
     }
+
+    /**
+     * 根据模式查询键列表
+     * @param pattern 匹配模式，如 "comment:video:*"
+     * @return 匹配的键集合
+     */
+    public static java.util.Set<String> keys(String pattern) {
+        Jedis jedis = null;
+        try {
+            jedis = getJedis();
+            return jedis.keys(pattern);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return java.util.Collections.emptySet();
+        } finally {
+            close(jedis);
+        }
+    }
 }
+

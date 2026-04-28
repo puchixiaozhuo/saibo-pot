@@ -1,5 +1,8 @@
 package com.xiaozhuo.service.Impl;
 
+import com.alibaba.fastjson.JSON;
+import com.xiaozhuo.annotation.Bean;
+import com.xiaozhuo.annotation.Transactional;
 import com.xiaozhuo.bean.vo.CommentVO;
 import com.xiaozhuo.dao.CommentDao;
 import com.xiaozhuo.dao.UserDao;
@@ -7,92 +10,94 @@ import com.xiaozhuo.dao.impl.CommentDaoImpl;
 import com.xiaozhuo.dao.impl.UserDaoImpl;
 import com.xiaozhuo.entity.User;
 import com.xiaozhuo.entity.VideoComment;
+import com.xiaozhuo.exception.BusinessException;
+import com.xiaozhuo.result.Result;
 import com.xiaozhuo.service.CommentService;
 import com.xiaozhuo.util.JDBCUtil;
 import com.xiaozhuo.util.RedisUtil;
+import com.xiaozhuo.util.TransactionManager;
 
 import java.sql.Connection;
-import java.sql.SQLException;
 import java.util.*;
-import java.util.stream.Collectors;
 
+/**
+ * 评论业务实现类（优化版）
+ * 使用声明式事务 + IoC 容器管理
+ */
+@Bean
 public class CommentServiceImpl implements CommentService {
 
     private CommentDao commentDao = new CommentDaoImpl();
     private UserDao userDao = new UserDaoImpl();
 
+    private static final String COMMENT_CACHE_PREFIX = "comment:video:";
+    private static final int CACHE_EXPIRE_SECONDS = 300;
+
+    /**
+     * 添加评论（声明式事务）
+     */
     @Override
-    public Map<String, Object> addComment(Long userId, Long videoId, String content, Long parentId) {
-        Map<String, Object> result = new HashMap<>();
+    @Transactional
+    public Result<Map<String, Object>> addComment(Long userId, Long videoId, String content, Long parentId) {
+        if (userId == null || videoId == null) {
+            throw new BusinessException(400, "用户ID和视频ID不能为空");
+        }
 
         if (content == null || content.trim().isEmpty()) {
-            result.put("code", 400);
-            result.put("message", "评论内容不能为空");
-            return result;
+            throw new BusinessException(400, "评论内容不能为空");
         }
 
         if (content.length() > 500) {
-            result.put("code", 400);
-            result.put("message", "评论内容不能超过500字");
-            return result;
+            throw new BusinessException(400, "评论内容不能超过500字");
+        }
+
+        Connection conn = TransactionManager.getConnection();
+
+        VideoComment comment = new VideoComment();
+        comment.setVideoId(videoId);
+        comment.setUserId(userId);
+        comment.setContent(content.trim());
+        comment.setParentId(parentId != null ? parentId : 0L);
+        comment.setLikeCount(0L);
+
+        int rows = commentDao.insert(conn, comment);
+        if (rows > 0) {
+            clearCommentCache(videoId);
+
+            Map<String, Object> data = new HashMap<>();
+            data.put("commentId", comment.getId());
+            data.put("content", comment.getContent());
+            data.put("createTime", comment.getCreateTime());
+
+            return Result.success("评论成功", data);
+        } else {
+            throw new BusinessException(500, "评论失败");
+        }
+    }
+
+    /**
+     * 根据视频ID获取评论
+     */
+    @Override
+    public Result<List<CommentVO>> getCommentsByVideoId(Long videoId, int pageNum, int pageSize, String sortBy) {
+        if (videoId == null || videoId <= 0) {
+            throw new BusinessException(400, "视频ID无效");
+        }
+
+        if (pageNum < 1) pageNum = 1;
+        if (pageSize < 1 || pageSize > 100) pageSize = 10;
+
+        String cacheKey = COMMENT_CACHE_PREFIX + videoId + ":page:" + pageNum + ":sort:" + sortBy;
+        String cachedData = RedisUtil.get(cacheKey);
+
+        if (cachedData != null) {
+            List<CommentVO> cachedList = JSON.parseArray(cachedData, CommentVO.class);
+            return Result.success("查询成功（缓存）", cachedList);
         }
 
         Connection conn = null;
         try {
-            conn = JDBCUtil.getConnection();
-            conn.setAutoCommit(false);
-
-            VideoComment comment = new VideoComment();
-            comment.setVideoId(videoId);
-            comment.setUserId(userId);
-            comment.setContent(content.trim());
-            comment.setParentId(parentId != null ? parentId : 0L);
-
-            int rows = commentDao.insert(conn, comment);
-            if (rows > 0) {
-                conn.commit();
-
-                String cacheKey = "comment:video:" + videoId;
-                RedisUtil.del(cacheKey);
-
-                result.put("code", 200);
-                result.put("message", "评论成功");
-                result.put("data", comment);
-            } else {
-                conn.rollback();
-                result.put("code", 500);
-                result.put("message", "评论失败");
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-            try { if (conn != null) conn.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
-            result.put("code", 500);
-            result.put("message", "评论异常：" + e.getMessage());
-        } finally {
-            if (conn != null) {
-                try { conn.setAutoCommit(true); conn.close(); } catch (SQLException e) { e.printStackTrace(); }
-            }
-        }
-        return result;
-    }
-
-    @Override
-    public Map<String, Object> getCommentsByVideoId(Long videoId, int pageNum, int pageSize, String sortBy) {
-        Map<String, Object> result = new HashMap<>();
-
-        String cacheKey = "comment:video:" + videoId + ":page:" + pageNum + ":sort:" + sortBy;
-        String cachedData = RedisUtil.get(cacheKey);
-
-        if (cachedData != null) {
-            result.put("code", 200);
-            result.put("message", "查询成功（缓存）");
-            result.put("data", com.alibaba.fastjson.JSON.parseObject(cachedData, Map.class));
-            result.put("fromCache", true);
-            return result;
-        }
-
-        Connection conn = null;
-        try { conn = JDBCUtil.getConnection();
+            conn = TransactionManager.getConnection();
 
             List<VideoComment> comments;
             if ("hot".equals(sortBy)) {
@@ -101,220 +106,182 @@ public class CommentServiceImpl implements CommentService {
                 comments = commentDao.selectByVideoIdOrderByTime(conn, videoId, pageNum, pageSize);
             }
 
-            int total = commentDao.countByVideoId(conn, videoId);
+            List<CommentVO> commentVOList = convertToCommentVOList(conn, comments);
 
-            List<CommentVO> commentVOList = new ArrayList<>();
-            for (VideoComment comment : comments) {
-                CommentVO vo = new CommentVO();
-                vo.setId(comment.getId());
-                vo.setVideoId(comment.getVideoId());
-                vo.setUserId(comment.getUserId());
-                vo.setParentId(comment.getParentId());
-                vo.setContent(comment.getContent());
-                vo.setLikeCount(comment.getLikeCount());
-                vo.setCreateTime(comment.getCreateTime());
+            RedisUtil.setex(cacheKey, CACHE_EXPIRE_SECONDS, JSON.toJSONString(commentVOList));
 
-                User user = userDao.findById(conn, comment.getUserId());
-                if (user != null) {
-                    vo.setUsername(user.getUsername());
-                    vo.setNickname(user.getNickname());
-                    vo.setAvatar(user.getAvatar());
-                }
+            return Result.success("查询成功", commentVOList);
 
-                commentVOList.add(vo);
-            }
-
-            Map<String, Object> data = new HashMap<>();
-            data.put("comments", commentVOList);
-            data.put("total", total);
-            data.put("pageNum", pageNum);
-            data.put("pageSize", pageSize);
-            data.put("totalPages", (total + pageSize - 1) / pageSize);
-
-            RedisUtil.setex(cacheKey, 300, com.alibaba.fastjson.JSON.toJSONString(data));
-
-            result.put("code", 200);
-            result.put("message", "查询成功");
-            result.put("data", data);
-            result.put("fromCache", false);
-
-        } catch (SQLException e) {
-            e.printStackTrace();
-            result.put("code", 500);
-            result.put("message", "查询异常：" + e.getMessage());
+        } catch (Exception e) {
+            throw new BusinessException(500, "查询评论失败：" + e.getMessage());
         } finally {
-            if (conn != null) {
-                try { conn.close(); } catch (SQLException e) { e.printStackTrace(); }
+            if (conn != null && !TransactionManager.hasActiveTransaction()) {
+                JDBCUtil.returnToPool(conn);
             }
         }
-        return result;
     }
 
+    /**
+     * 删除评论（声明式事务）
+     */
     @Override
-    public Map<String, Object> deleteComment(Long userId, Long commentId) {
-        Map<String, Object> result = new HashMap<>();
-
-        Connection conn = null;
-        try {
-            conn = JDBCUtil.getConnection();
-
-            VideoComment comment = commentDao.selectById(conn, commentId);
-            if (comment == null) {
-                result.put("code", 404);
-                result.put("message", "评论不存在");
-                return result;
-            }
-
-            if (!comment.getUserId().equals(userId)) {
-                result.put("code", 403);
-                result.put("message", "无权限删除，只能删除自己的评论");
-                return result;
-            }
-
-            int rows = commentDao.deleteById(conn, commentId);
-            if (rows > 0) {
-                String cacheKey = "comment:video:" + comment.getVideoId();
-                RedisUtil.del(cacheKey);
-
-                result.put("code", 200);
-                result.put("message", "删除成功");
-            } else {
-                result.put("code", 500);
-                result.put("message", "删除失败");
-            }
-        } catch (SQLException e) {
-            e.printStackTrace();
-            result.put("code", 500);
-            result.put("message", "删除异常：" + e.getMessage());
-        } finally {
-            if (conn != null) {
-                try { conn.close(); } catch (SQLException e) { e.printStackTrace(); }
-            }
+    @Transactional
+    public Result<Void> deleteComment(Long userId, Long commentId) {
+        if (userId == null || commentId == null) {
+            throw new BusinessException(400, "参数无效");
         }
-        return result;
+
+        Connection conn = TransactionManager.getConnection();
+
+        VideoComment comment = commentDao.selectById(conn, commentId);
+        if (comment == null) {
+            throw new BusinessException(404, "评论不存在");
+        }
+
+        if (!comment.getUserId().equals(userId)) {
+            throw new BusinessException(403, "无权限删除，只能删除自己的评论");
+        }
+
+        int rows = commentDao.deleteById(conn, commentId);
+        if (rows > 0) {
+            clearCommentCache(comment.getVideoId());
+            return Result.success();
+        } else {
+            throw new BusinessException(500, "删除失败");
+        }
     }
 
+    /**
+     * 点赞评论（声明式事务）
+     */
     @Override
-    public Map<String, Object> likeComment(Long userId, Long commentId) {
-        Map<String, Object> result = new HashMap<>();
+    @Transactional
+    public Result<Void> likeComment(Long userId, Long commentId) {
+        if (userId == null || commentId == null) {
+            throw new BusinessException(400, "参数无效");
+        }
 
         String likeKey = "like:user:" + userId + ":comment:" + commentId;
         if (RedisUtil.exists(likeKey)) {
-            result.put("code", 400);
-            result.put("message", "已经点赞过");
-            return result;
+            throw new BusinessException(400, "已经点赞过");
         }
 
-        Connection conn = null;
-        try {
-            conn = JDBCUtil.getConnection();
+        Connection conn = TransactionManager.getConnection();
 
-            int rows = commentDao.incrementLikeCount(conn, commentId);
-            if (rows > 0) {
-                RedisUtil.setex(likeKey, 86400 * 30, "1");
+        int rows = commentDao.incrementLikeCount(conn, commentId);
+        if (rows > 0) {
+            RedisUtil.setex(likeKey, 86400 * 30, "1");
 
-                VideoComment comment = commentDao.selectById(conn, commentId);
-                if (comment != null) {
-                    String cacheKey = "comment:video:" + comment.getVideoId();
-                    RedisUtil.del(cacheKey);
-                }
-
-                result.put("code", 200);
-                result.put("message", "点赞成功");
-            } else {
-                result.put("code", 500);
-                result.put("message", "点赞失败");
+            VideoComment comment = commentDao.selectById(conn, commentId);
+            if (comment != null) {
+                clearCommentCache(comment.getVideoId());
             }
-        } catch (SQLException e) {
-            e.printStackTrace();
-            result.put("code", 500);
-            result.put("message", "点赞异常：" + e.getMessage());
-        } finally {
-            if (conn != null) {
-                try { conn.close(); } catch (SQLException e) { e.printStackTrace(); }
-            }
+
+            return Result.success();
+        } else {
+            throw new BusinessException(500, "点赞失败");
         }
-        return result;
     }
 
+    /**
+     * 取消点赞评论（声明式事务）
+     */
     @Override
-    public Map<String, Object> unlikeComment(Long userId, Long commentId) {
-        Map<String, Object> result = new HashMap<>();
+    @Transactional
+    public Result<Void> unlikeComment(Long userId, Long commentId) {
+        if (userId == null || commentId == null) {
+            throw new BusinessException(400, "参数无效");
+        }
 
         String likeKey = "like:user:" + userId + ":comment:" + commentId;
         if (!RedisUtil.exists(likeKey)) {
-            result.put("code", 400);
-            result.put("message", "还未点赞");
-            return result;
+            throw new BusinessException(400, "还未点赞");
         }
 
-        Connection conn = null;
-        try {
-            conn = JDBCUtil.getConnection();
+        Connection conn = TransactionManager.getConnection();
 
-            int rows = commentDao.decrementLikeCount(conn, commentId);
-            if (rows > 0) {
-                RedisUtil.del(likeKey);
+        int rows = commentDao.decrementLikeCount(conn, commentId);
+        if (rows > 0) {
+            RedisUtil.del(likeKey);
 
-                VideoComment comment = commentDao.selectById(conn, commentId);
-                if (comment != null) {
-                    String cacheKey = "comment:video:" + comment.getVideoId();
-                    RedisUtil.del(cacheKey);
-                }
-
-                result.put("code", 200);
-                result.put("message", "取消点赞成功");
-            } else {
-                result.put("code", 500);
-                result.put("message", "取消点赞失败");
+            VideoComment comment = commentDao.selectById(conn, commentId);
+            if (comment != null) {
+                clearCommentCache(comment.getVideoId());
             }
-        } catch (SQLException e) {
-            e.printStackTrace();
-            result.put("code", 500);
-            result.put("message", "取消点赞异常：" + e.getMessage());
-        } finally {
-            if (conn != null) {
-                try { conn.close(); } catch (SQLException e) { e.printStackTrace(); }
-            }
+
+            return Result.success();
+        } else {
+            throw new BusinessException(500, "取消点赞失败");
         }
-        return result;
     }
 
+    /**
+     * 获取用户评论
+     */
     @Override
-    public Map<String, Object> getUserComments(Long userId, int pageNum, int pageSize) {
-        Map<String, Object> result = new HashMap<>();
+    public Result<List<CommentVO>> getUserComments(Long userId, int pageNum, int pageSize) {
+        if (userId == null || userId <= 0) {
+            throw new BusinessException(400, "用户ID无效");
+        }
+
+        if (pageNum < 1) pageNum = 1;
+        if (pageSize < 1 || pageSize > 100) pageSize = 10;
 
         Connection conn = null;
         try {
-            conn = JDBCUtil.getConnection();
+            conn = TransactionManager.getConnection();
 
             List<VideoComment> comments = commentDao.selectByUserId(conn, userId, pageNum, pageSize);
+            List<CommentVO> commentVOList = convertToCommentVOList(conn, comments);
 
-            List<CommentVO> commentVOList = comments.stream().map(comment -> {
-                CommentVO vo = new CommentVO();
-                vo.setId(comment.getId());
-                vo.setVideoId(comment.getVideoId());
-                vo.setUserId(comment.getUserId());
-                vo.setParentId(comment.getParentId());
-                vo.setContent(comment.getContent());
-                vo.setLikeCount(comment.getLikeCount());
-                vo.setCreateTime(comment.getCreateTime());
-                return vo;
-            }).collect(Collectors.toList());
+            return Result.success("查询成功", commentVOList);
 
-            result.put("code", 200);
-            result.put("message", "查询成功");
-            result.put("data", commentVOList);
-            result.put("total", commentVOList.size());
-        } catch (SQLException e) {
-            e.printStackTrace();
-            result.put("code", 500);
-            result.put("message", "查询异常：" + e.getMessage());
+        } catch (Exception e) {
+            throw new BusinessException(500, "查询评论失败：" + e.getMessage());
         } finally {
-            if (conn != null) {
-                try { conn.close(); } catch (SQLException e) { e.printStackTrace(); }
+            if (conn != null && !TransactionManager.hasActiveTransaction()) {
+                JDBCUtil.returnToPool(conn);
             }
         }
-        return result;
+    }
+
+    /**
+     * 将 VideoComment 列表转换为 CommentVO 列表
+     */
+    private List<CommentVO> convertToCommentVOList(Connection conn, List<VideoComment> comments) throws Exception {
+        List<CommentVO> commentVOList = new ArrayList<>();
+
+        for (VideoComment comment : comments) {
+            CommentVO vo = new CommentVO();
+            vo.setId(comment.getId());
+            vo.setVideoId(comment.getVideoId());
+            vo.setUserId(comment.getUserId());
+            vo.setParentId(comment.getParentId());
+            vo.setContent(comment.getContent());
+            vo.setLikeCount(comment.getLikeCount());
+            vo.setCreateTime(comment.getCreateTime());
+
+            User user = userDao.findById(conn, comment.getUserId());
+            if (user != null) {
+                vo.setUsername(user.getUsername());
+                vo.setNickname(user.getNickname());
+                vo.setAvatar(user.getAvatar());
+            }
+
+            commentVOList.add(vo);
+        }
+
+        return commentVOList;
+    }
+
+    /**
+     * 清除评论缓存
+     */
+    private void clearCommentCache(Long videoId) {
+        String pattern = COMMENT_CACHE_PREFIX + videoId + "*";
+        Set<String> keys = RedisUtil.keys(pattern);
+        if (keys != null && !keys.isEmpty()) {
+            RedisUtil.del(keys.toArray(new String[0]));
+        }
     }
 }

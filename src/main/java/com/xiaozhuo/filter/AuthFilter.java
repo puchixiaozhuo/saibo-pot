@@ -22,6 +22,7 @@ public class AuthFilter implements Filter {
     private static final List<String> EXCLUDE_PATHS = Arrays.asList(
             "/api/user/login",
             "/api/user/register",
+            "/api/user/refresh",
             "/index.html"
     );
 

@@ -1,25 +1,37 @@
 package com.xiaozhuo.service.Impl;
 
+import com.xiaozhuo.annotation.Bean;
 import com.xiaozhuo.dao.PermissionDao;
 import com.xiaozhuo.dao.impl.PermissionDaoImpl;
+import com.xiaozhuo.exception.BusinessException;
+import com.xiaozhuo.result.Result;
 import com.xiaozhuo.service.PermissionService;
 import com.xiaozhuo.util.JDBCUtil;
 import com.xiaozhuo.util.PermissionCacheUtil;
 
 import java.sql.Connection;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.HashSet;
 import java.util.Set;
 
+/**
+ * 权限业务实现类（优化版）
+ * 使用 IoC 容器管理 + 权限缓存
+ */
+@Bean
 public class PermissionServiceImpl implements PermissionService {
 
     private PermissionDao permissionDao = new PermissionDaoImpl();
 
+    /**
+     * 获取用户权限列表
+     */
     @Override
-    public Map<String, Object> getUserPermissions(Long userId) {
-        Map<String, Object> result = new HashMap<>();
-        Connection conn = null;
+    public Result<Set<String>> getUserPermissions(Long userId) {
+        if (userId == null || userId <= 0) {
+            throw new BusinessException(400, "用户ID无效");
+        }
 
+        Connection conn = null;
         try {
             conn = JDBCUtil.getConnection();
 
@@ -30,103 +42,105 @@ public class PermissionServiceImpl implements PermissionService {
                 PermissionCacheUtil.setUserPermissions(userId, permissions);
             }
 
-            result.put("code", 200);
-            result.put("message", "查询成功");
-            result.put("data", permissions);
-        } catch (Exception e) {
-            e.printStackTrace();
-            result.put("code", 500);
-            result.put("message", "服务器错误：" + e.getMessage());
-        } finally {
-            JDBCUtil.close(conn, null);
-        }
+            return Result.success("查询成功", permissions);
 
-        return result;
+        } catch (Exception e) {
+            throw new BusinessException(500, "查询权限失败：" + e.getMessage());
+        } finally {
+            if (conn != null) {
+                JDBCUtil.returnToPool(conn);
+            }
+        }
     }
 
+    /**
+     * 检查用户是否有指定权限
+     */
     @Override
     public boolean hasPermission(Long userId, String permCode) {
-        Connection conn = null;
-
-        try {
-            conn = JDBCUtil.getConnection();
-
-            Set<String> permissions = PermissionCacheUtil.getUserPermissions(userId);
-
-            if (permissions == null || permissions.isEmpty()) {
-                permissions = permissionDao.selectPermCodesByUserId(conn, userId);
-                PermissionCacheUtil.setUserPermissions(userId, permissions);
-            }
-
-            return permissions.contains(permCode);
-        } catch (Exception e) {
-            e.printStackTrace();
+        if (userId == null || permCode == null || permCode.isEmpty()) {
             return false;
-        } finally {
-            JDBCUtil.close(conn, null);
         }
+
+        Set<String> permissions = getOrLoadPermissions(userId);
+        return permissions.contains(permCode);
     }
 
+    /**
+     * 检查用户是否有任一权限
+     */
     @Override
     public boolean hasAnyPermission(Long userId, String... permCodes) {
-        Connection conn = null;
-
-        try {
-            conn = JDBCUtil.getConnection();
-
-            Set<String> permissions = PermissionCacheUtil.getUserPermissions(userId);
-
-            if (permissions == null || permissions.isEmpty()) {
-                permissions = permissionDao.selectPermCodesByUserId(conn, userId);
-                PermissionCacheUtil.setUserPermissions(userId, permissions);
-            }
-
-            for (String permCode : permCodes) {
-                if (permissions.contains(permCode)) {
-                    return true;
-                }
-            }
-
+        if (userId == null || permCodes == null || permCodes.length == 0) {
             return false;
-        } catch (Exception e) {
-            e.printStackTrace();
-            return false;
-        } finally {
-            JDBCUtil.close(conn, null);
         }
+
+        Set<String> permissions = getOrLoadPermissions(userId);
+
+        for (String permCode : permCodes) {
+            if (permissions.contains(permCode)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
+    /**
+     * 检查用户是否有所有权限
+     */
     @Override
     public boolean hasAllPermissions(Long userId, String... permCodes) {
-        Connection conn = null;
-
-        try {
-            conn = JDBCUtil.getConnection();
-
-            Set<String> permissions = PermissionCacheUtil.getUserPermissions(userId);
-
-            if (permissions == null || permissions.isEmpty()) {
-                permissions = permissionDao.selectPermCodesByUserId(conn, userId);
-                PermissionCacheUtil.setUserPermissions(userId, permissions);
-            }
-
-            for (String permCode : permCodes) {
-                if (!permissions.contains(permCode)) {
-                    return false;
-                }
-            }
-
-            return true;
-        } catch (Exception e) {
-            e.printStackTrace();
+        if (userId == null || permCodes == null || permCodes.length == 0) {
             return false;
-        } finally {
-            JDBCUtil.close(conn, null);
         }
+
+        Set<String> permissions = getOrLoadPermissions(userId);
+
+        for (String permCode : permCodes) {
+            if (!permissions.contains(permCode)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
+    /**
+     * 刷新用户权限缓存
+     */
     @Override
     public void refreshUserPermissions(Long userId) {
+        if (userId == null || userId <= 0) {
+            return;
+        }
+
         PermissionCacheUtil.clearUserPermissions(userId);
     }
+
+    /**
+     * 获取或加载用户权限（带缓存）
+     */
+    private Set<String> getOrLoadPermissions(Long userId) {
+        Set<String> permissions = PermissionCacheUtil.getUserPermissions(userId);
+
+        if (permissions == null || permissions.isEmpty()) {
+            Connection conn = null;
+            try {
+                conn = JDBCUtil.getConnection();
+                permissions = permissionDao.selectPermCodesByUserId(conn, userId);
+                PermissionCacheUtil.setUserPermissions(userId, permissions);
+            } catch (Exception e) {
+                e.printStackTrace();
+                return new HashSet<>();
+            } finally {
+                if (conn != null) {
+                    JDBCUtil.returnToPool(conn);
+                }
+            }
+        }
+
+        return permissions;
+    }
 }
+

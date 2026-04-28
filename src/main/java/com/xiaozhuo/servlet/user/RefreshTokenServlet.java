@@ -1,7 +1,6 @@
-// 优化后的LoginServlet.java
+// 优化后的RefreshTokenServlet.java
 package com.xiaozhuo.servlet.user;
 
-import com.xiaozhuo.bean.dto.LoginDTO;
 import com.xiaozhuo.bean.vo.LoginVO;
 import com.xiaozhuo.exception.BusinessException;
 import com.xiaozhuo.factory.ServiceFactory;
@@ -17,9 +16,10 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.util.Map;
 
-@WebServlet("/api/user/login")
-public class LoginServlet extends HttpServlet {
+@WebServlet("/api/user/refresh")
+public class RefreshTokenServlet extends HttpServlet {
 
     // 改为使用工厂
     private UserService userService;
@@ -37,7 +37,6 @@ public class LoginServlet extends HttpServlet {
         resp.setContentType("application/json;charset=UTF-8");
 
         try {
-            // 读取请求体
             StringBuilder sb = new StringBuilder();
             String line;
             while ((line = req.getReader().readLine()) != null) {
@@ -45,38 +44,18 @@ public class LoginServlet extends HttpServlet {
             }
 
             String json = sb.toString().trim();
+            Map<String, String> requestBody = JsonUtil.fromJson(json, Map.class);
 
-            // 验证JSON格式
-            if (json == null || json.isEmpty() || json.equals("{}")) {
-                throw new BusinessException(400, "请求体不能为空");
+            String refreshToken = requestBody.get("refreshToken");
+            if (refreshToken == null || refreshToken.isEmpty()) {
+                throw new BusinessException(400, "refreshToken不能为空");
             }
 
-            // 解析DTO
-            LoginDTO dto = JsonUtil.fromJson(json, LoginDTO.class);
-            if (dto == null) {
-                throw new BusinessException(400, "无法解析登录数据");
-            }
-
-            if (dto.getUsername() == null || dto.getUsername().isEmpty() ||
-                dto.getPassword() == null || dto.getPassword().isEmpty()) {
-                throw new BusinessException(400, "用户名和密码不能为空");
-            }
-
-            // 调用Service
-            Result<LoginVO> result = userService.login(dto);
+            Result<LoginVO> result = userService.refreshToken(refreshToken);
             resp.getWriter().write(JsonUtil.toJson(result));
 
         } catch (Exception e) {
-            // 使用统一异常处理器
             GlobalExceptionHandler.handleException(resp, e, req.getRequestURI());
         }
-    }
-
-    @Override
-    protected void doGet(HttpServletRequest req, HttpServletResponse resp)
-            throws ServletException, IOException {
-        resp.setContentType("application/json;charset=UTF-8");
-        Result<LoginVO> result = Result.fail(405, "不支持GET请求，请使用POST");
-        resp.getWriter().write(JsonUtil.toJson(result));
     }
 }
