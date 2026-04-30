@@ -56,6 +56,9 @@ public class VideoInfo {
     @Column("comment_count")
     private Long commentCount;
 
+    @Column("favorite_count")
+    private Long favoriteCount;
+
     @Column("create_time")
     private LocalDateTime createTime;
 

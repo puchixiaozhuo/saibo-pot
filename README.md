@@ -1,434 +1,540 @@
-# TopView2026 后端一轮考核项目 - 赛博聚石盆
+# TopView2026 - 赛博聚石盆视频平台
 
-## 项目简介
-本项目是基于 **Java Servlet + JDBC + Maven** 开发的后端考核项目，实现了用户注册登录、视频管理、评论点赞等核心业务功能。这是一个单体架构的视频推流系统，遵循 MVC 分层结构，旨在打造一个"赛博搬石大王"的奇的收集与分享平台。
+> 基于 Java Servlet + JDBC 的手写 MVC 框架视频社交平台
 
-## 环境要求
-- **JDK**：21（项目实际使用版本）
-- **Maven**：3.6.x 及以上
-- **Tomcat**：9.x（Servlet API 4.0.1）
-- **数据库**：MySQL 8.0（兼容 5.7）
-- **缓存**：redis实现缓存
+## 📋 目录
 
-- **开发工具**：IntelliJ IDEA 
+- [项目概述](#项目概述)
+- [技术栈](#技术栈)
+- [架构设计](#架构设计)
+- [功能模块](#功能模块)
+- [数据库设计](#数据库设计)
+- [API 接口文档](#api-接口文档)
+- [环境要求](#环境要求)
+- [快速开始](#快速开始)
+- [项目结构](#项目结构)
+- [核心实现](#核心实现)
+- [单元测试](#单元测试)
+- [性能优化](#性能优化)
+- [常见问题](#常见问题)
+
+---
+
+## 项目概述
+
+TopView2026（赛博聚石盆）是一个基于 Java Web 技术栈开发的视频社交平台，支持视频发布、Feed 流推送、优惠券抢购等核心功能。
+
+### 考核信息
+
+- **一轮考核**：基础视频平台功能（已完成）
+- **二轮考核**：Feed 流推送 + 优惠券抢购（进行中）
+- **开始时间**：2026-04-23
+- **截止时间**：2026-05-11
+- **答辩时间**：2026-05-12
+
+### 核心特性
+
+✅ **手写 MVC 框架**：不使用 SpringBoot/SpringMVC/MyBatis  
+✅ **前后端分离**：后端提供 RESTful API，前端使用 Vue/React  
+✅ **Redis 缓存**：用户行为数据缓存、Feed 流加速  
+✅ **OSS 云存储**：阿里云 OSS 视频文件存储  
+✅ **RBAC 权限控制**：基于角色的访问控制  
+✅ **声明式事务**：自定义注解实现事务管理  
+✅ **连接池优化**：自定义数据库连接池  
+
+---
 
 ## 技术栈
 
 ### 核心技术
-- **后端框架**：Java Servlet（原生手写，无 Spring 系列）
-- **数据库访问**：JDBC + 手写连接池
-- **项目管理**：Maven
-- **Web 容器**：Tomcat 9.0.111
 
-### 依赖库
-- `mysql-connector-java` 8.0.33 - MySQL 驱动
-- `commons-codec` 1.15 - 密码加密（SHA256+ 盐）
-- `fastjson` 1.2.83 - JSON 序列化
-- `hutool-all` 5.8.23 - 工具包（含 JWT 支持）
-- `lombok` 1.18.30 - 简化实体类开发
-- `junit` 4.13.2 - 单元测试
+| 类别 | 技术 | 版本 | 说明 |
+|------|------|------|------|
+| 后端语言 | Java | 8+ | 禁止使用 SpringBoot/SpringMVC/MyBatis |
+| Web 框架 | Java Servlet | 4.0 | 手写 MVC 架构 |
+| 数据库 | MySQL | 8.0+ | 关系型数据存储 |
+| 缓存 | Redis | 6.0+ | 用户行为缓存、Feed 流加速 |
+| 云存储 | 阿里云 OSS | - | 视频文件存储 |
+| 构建工具 | Maven | 3.6+ | 项目依赖管理 |
+| Web 容器 | Tomcat | 9.0+ | 应用服务器 |
 
-## 项目结构
-saibo-pot/ ├── src/main/ │ ├── java/com/xiaozhuo/ │ │ ├── bean/ │ │ │ ├── dto/ # 数据传输对象 │ │ │ │ ├── LoginDTO.java │ │ │ │ ├── UserDTO.java │ │ │ │ ├── VideoDTO.java │ │ │ │ └── CommentDTO.java │ │ │ └── vo/ # 视图对象 │ │ │ ├── LoginVO.java │ │ │ ├── UserVO.java │ │ │ ├── VideoVO.java │ │ │ └── CommentVO.java │ │ ├── constant/ # 常量定义 │ │ ├── entity/ # 实体类 │ │ │ ├── User.java │ │ │ ├── UserToken.java │ │ │ ├── VideoInfo.java │ │ │ ├── VideoComment.java │ │ │ ├── UserFollow.java │ │ │ └── UserLike.java │ │ ├── result/ # 统一返回结果 │ │ │ └── Result.java │ │ ├── service/ # 业务逻辑层（待实现） │ │ └── util/ # 工具类 │ │ ├── JDBCUtil.java # 数据库连接池 │ │ ├── MD5Util.java # 加密工具 │ │ ├── TokenUtil.java # Token 生成与校验 │ │ ├── JsonUtil.java # JSON 处理 │ │ └── LogUtil.java # 日志处理 │ ├── resources/ │ │ └── db.properties # 数据库配置 │ └── webapp/ │ ├── WEB-INF/ │ │ └── web.xml # Web 应用配置 │ └── index.html # 首页 ├── sql/ │ └── saibo.sql # 数据库建表语句 ├── pom.xml # Maven 配置 └── README.md # 项目说明文档
+### 可选框架（加分项）
+
+| 类别 | 技术 | 用途 |
+|------|------|------|
+| 消息队列 | RocketMQ / Kafka | Feed 流异步推送 |
+| 流量控制 | Sentinel | 限流、熔断、排队 |
+| RPC 框架 | Dubbo / gRPC | 服务间调用 |
+| 配置中心 | Nacos / Eureka | 配置持久化 |
+| 链路追踪 | SkyWalking | 性能监控 |
+| 分布式事务 | SEATA | 跨服务事务 |
+| 容器化 | Docker / K8s | 部署编排 |
+
+### 开发工具
+
+- **Lombok**：简化代码编写
+- **JUnit 5 + Mockito**：单元测试
+- **Fastjson**：JSON 序列化
+- **Hutool**：工具类库
+
+---
+
+## 架构设计
+
+### 整体架构
+
+### MVC 分层
+
+---
+
 ## 功能模块
 
-### ✅ 必做功能
-1. **注册功能**
-   - 用户注册和管理员注册
-   - 密码 SHA256+ 盐加密存储
-   - 账号状态管理（正常/禁用）
+### 一轮考核功能（已完成）✅
 
-2. **登录功能**
-   - 账号密码登录
-   - Token 生成与刷新机制
-   - 登录状态缓存
+#### 1. 用户认证模块
+- ✅ 用户注册
+- ✅ 用户登录（双 Token 机制：AccessToken + RefreshToken）
+- ✅ Token 刷新
+- ✅ 用户信息查询
+- ✅ RBAC 权限控制
 
-3. **视频管理**
-   - 视频列表查看
-   - 视频详情查询
-   - 视频信息缓存优化
+#### 2. 视频管理模块
+- ✅ 视频上传（支持封面）
+- ✅ 视频列表查询（分页）
+- ✅ 视频详情查询
+- ✅ 按作者查询视频
+- ✅ 按分类查询视频
+- ✅ 视频搜索
+- ✅ 视频删除
+- ✅ 视频点赞/取消点赞
+- ✅ 视频下载链接获取
+- ✅ 视频本地缓存
 
-4. **评论功能**
-   - 视频评论发布
-   - 评论删除
-   - 评论列表展示
+#### 3. 评论模块
+- ✅ 发表评论
+- ✅ 评论列表查询（按热度/时间排序）
+- ✅ 删除评论
+- ✅ 评论点赞/取消点赞
+- ✅ 用户评论历史查询
 
-### 🚀 进阶功能
-5. **关注功能**
-   - 用户关注/取消关注
-   - 关注列表查询
-   - 粉丝数量统计
+#### 4. 关注模块
+- ✅ 关注用户
+- ✅ 取消关注
+- ✅ 关注列表查询
+- ✅ 粉丝列表查询
+- ✅ 关注状态查询
+- ✅ 关注数量统计
 
-6. **点赞功能**
-   - 视频点赞/取消
-   - 评论点赞/取消
-   - 热度统计与排序
+#### 5. 权限管理模块
+- ✅ 用户权限查询
+- ✅ 资源级权限校验（所有权检查）
 
-7. **RBAC 权限管理**
-   - 角色权限分配
-   - 接口权限校验
-   - 防止越权访问
+---
+
+### 二轮考核功能（开发中）🚧
+
+#### 1. Feed 流推送模块
+
+**目标需求**：用户可以通过首页或推荐页面，接收所关注博主或其他用户发布的视频
+
+##### 基础功能
+
+**视频内容管理**
+- [ ] 视频内容分区（美食、探店、科技等分类）
+- [ ] 博主/用户发布动态、视频
+- [ ] 动态内容类型扩展（图文、视频混合）
+
+**推送机制**
+
+**Pull 模式（拉取）**
+- [ ] 用户上线后拉取关注用户的最新动态
+- [ ] 基于游标的分页查询（加分项）
+- [ ] 缓存用户 Feed 流数据到 Redis
+
+**Push 模式（推送）**
+- [ ] 博主发布动态后，主动推送到粉丝 Feed 流
+- [ ] 异步推送机制（使用消息队列 - 加分项）
+- [ ] 推送失败重试机制
+
+**用户交互**
+- [ ] 视频点赞（已实现）
+- [ ] 评论点赞（已实现）
+- [ ] 评论视频/动态（已实现）
+- [ ] 视频收藏功能（新增）
+
+##### 技术实现要点
+
+**Redis 数据结构设计**
+
+---
+
+#### 2. 优惠券抢购模块
+
+**目标需求**：用户在观看博主视频时，参与优惠券限时抢购活动
+
+##### 基础功能
+
+**优惠券库存管理**
+- [ ] 设置固定库存量
+- [ ] 实时更新库存（Redis 原子操作）
+- [ ] 防止超卖（Lua 脚本保证原子性）
+
+**活动时间管理**
+- [ ] 设置抢购开始时间
+- [ ] 设置抢购结束时间
+- [ ] 自动开启/结束活动
+- [ ] 倒计时提示
+
+**抢购流程**
+- [ ] 用户点击抢购
+- [ ] 校验活动时间
+- [ ] 扣减库存（Redis DECR）
+- [ ] 生成优惠券码
+- [ ] 写入数据库（异步）
+- [ ] 返回抢购结果
+
+**抢购结果通知**
+- [ ] 成功：生成优惠券码，实时返回
+- [ ] 失败：库存不足/活动未开始/已结束
+- [ ] 事务回滚：库存不足时恢复 Redis 库存
+
+##### 技术实现要点
+
+**防止超卖方案**
+
+**数据库表设计**
+
+---
 
 ## 数据库设计
 
 ### 核心表结构
 
-| 表名 | 说明 | 主要字段 |
-|------|------|----------|
-| `sys_user` | 系统用户表 | id, username, password, salt, nickname, role |
-| `user_token` | 用户 Token 表 | user_id, access_token, refresh_token, expire_time |
-| `video_info` | 视频信息表 | author_id, title, video_url, view_count, like_count |
-| `video_comment` | 视频评论表 | video_id, user_id, content, like_count |
-| `user_follow` | 用户关注表 | user_id, follow_id |
-| `user_like` | 通用点赞表 | user_id, target_type, target_id |
-| `sys_permission` | 权限表 | perm_code, perm_name |
-| `sys_role_perm` | 角色权限关联表 | role, perm_id |
+#### 1. 用户相关
 
-详细 SQL 请查看：[`sql/saibo.sql`](sql/saibo.sql)
+#### 2. 视频相关
 
-## 快速开始
+#### 3. 互动相关
 
-### 1. 数据库初始化
-## 功能模块
+#### 4. 权限相关
 
-### ✅ 必做功能
-1. **注册功能**
-   - 用户注册和管理员注册
-   - 密码 SHA256+ 盐加密存储
-   - 账号状态管理（正常/禁用）
-   - 将用户信息持久化到数据库中
+#### 5. 优惠券相关（二轮新增）
 
-2. **登录功能**
-   - 账号密码登录
-   - Token 生成与刷新机制
-   - 校验用户是否登入，并缓存用户的登入状态
-
-3. **视频管理**
-   - 视频列表查看
-   - 视频详情查询
-   - 视频信息缓存优化
-
-4. **评论功能**
-   - 视频评论发布
-   - 评论删除
-   - 评论列表展示
-
-### 🚀 进阶功能
-5. **关注功能**
-   - 用户关注/取消关注
-   - 关注列表查询
-   - 粉丝数量统计
-
-6. **点赞功能**
-   - 视频点赞/取消
-   - 评论点赞/取消
-   - 热度统计与排序展示评论
-
-7. **RBAC 权限管理**
-   - 角色权限分配
-   - 接口权限校验
-   - 防止越权访问
-
-## 数据库设计
-
-### 核心表结构
-
-| 表名 | 说明 | 主要字段 |
-|------|------|----------|
-| `sys_user` | 系统用户表 | id, username, password, salt, nickname, role |
-| `user_token` | 用户 Token 表 | user_id, access_token, refresh_token, expire_time |
-| `video_info` | 视频信息表 | author_id, title, video_url, view_count, like_count |
-| `video_comment` | 视频评论表 | video_id, user_id, content, like_count |
-| `user_follow` | 用户关注表 | user_id, follow_id |
-| `user_like` | 通用点赞表 | user_id, target_type, target_id |
-| `sys_permission` | 权限表 | perm_code, perm_name |
-| `sys_role_perm` | 角色权限关联表 | role, perm_id |
-
-详细 SQL 请查看：[`sql/saibo.sql`](sql/saibo.sql)
-
-## 快速开始
-
-### 1. 数据库初始化
-bash
-登录 MySQL
-mysql -u root -p
-执行建表语句
-source D:\saibo-pot\sql\saibo.sql###
-
-### 2. 修改数据库配置
-编辑 `src/main/resources/db.properties`：
-properties jdbc.driver=com.mysql.cj.jdbc.Driver jdbc.url=jdbc:mysql://localhost:3306/cyber_stone_video?useSSL=false&serverTimezone=UTC&characterEncoding=utf8 jdbc.username=root jdbc.password=your_password jdbc.initialSize=5 jdbc.maxActive=20### 3. 编译打包
-
-### 3. 编译打包
-bash
-cd D:\saibo-pot
-mvn clean package
-
-### 4. 部署到 Tomcat
-bash
-将生成的 war 包复制到 Tomcat 的 webapps 目录
-copy target\saibo-pot.war C:\path\to\tomcat\webapps\
-启动 Tomcat
-C:\path\to\tomcat\bin\startup.bat### 5. 访问项目
-- 项目地址：`http://localhost:9090/saibo-pot/`
-- 默认管理员账号：`admin / 123456`
+---
 
 ## API 接口文档
 
-### 认证相关
-| 接口 | 方法 | 描述 | 参数 |
+### 基础信息
+
+- **Base URL**: `http://localhost:9090/saibo-pot`
+- **认证方式**: Header 中携带 `Authorization: Bearer {token}`
+- **响应格式**: JSON
+
+### 统一响应格式
+
+### 接口列表
+
+#### 1. 用户认证模块
+
+| 方法 | 路径 | 说明 | 认证 |
 |------|------|------|------|
-| `/api/user/register` | POST | 用户注册 | username, password, nickname |
-| `/api/user/login` | POST | 用户登录 | username, password |
-| `/api/user/refresh` | POST | Token 刷新 | refresh_token |
-| `/api/user/logout` | POST | 用户登出 | access_token |
+| POST | `/api/user/register` | 用户注册 | ❌ |
+| POST | `/api/user/login` | 用户登录 | ❌ |
+| POST | `/api/user/refresh` | 刷新 Token | ❌ |
+| GET | `/api/user/info` | 获取用户信息 | ✅ |
 
-### 视频相关
-| 接口 | 方法 | 描述 | 参数 |
+#### 2. 视频管理模块
+
+| 方法 | 路径 | 说明 | 认证 |
 |------|------|------|------|
-| `/api/video/list` | GET | 获取视频列表 | page, size, sortType |
-| `/api/video/detail` | GET | 获取视频详情 | videoId |
-| `/api/video/add` | POST | 发布视频 | title, videoUrl, cover, description |
-| `/api/video/delete` | DELETE | 删除视频 | videoId |
+| POST | `/api/video/upload` | 上传视频 | ✅ |
+| GET | `/api/video/list` | 视频列表 | ❌ |
+| GET | `/api/video/{id}` | 视频详情 | ❌ |
+| GET | `/api/video/author/{authorId}` | 作者视频 | ❌ |
+| GET | `/api/video/category/{categoryId}` | 分类视频 | ❌ |
+| GET | `/api/video/search` | 搜索视频 | ❌ |
+| DELETE | `/api/video/{id}` | 删除视频 | ✅ |
+| POST | `/api/video/{id}/like` | 点赞视频 | ✅ |
+| POST | `/api/video/{id}/unlike` | 取消点赞 | ✅ |
+| POST | `/api/video/{id}/cache` | 缓存视频 | ✅ |
+| GET | `/api/video/download/{id}` | 下载链接 | ✅ |
 
-### 评论相关
-| 接口 | 方法 | 描述 | 参数 |
+#### 3. 评论模块
+
+| 方法 | 路径 | 说明 | 认证 |
 |------|------|------|------|
-| `/api/comment/list` | GET | 获取评论列表 | videoId, page, size |
-| `/api/comment/add` | POST | 发布评论 | videoId, content |
-| `/api/comment/delete` | DELETE | 删除评论 | commentId |
+| POST | `/api/comment/add` | 发表评论 | ✅ |
+| GET | `/api/comment/video/{videoId}` | 视频评论 | ❌ |
+| GET | `/api/comment/user/{userId}` | 用户评论 | ❌ |
+| DELETE | `/api/comment/{id}` | 删除评论 | ✅ |
+| POST | `/api/comment/{id}/like` | 点赞评论 | ✅ |
+| POST | `/api/comment/{id}/unlike` | 取消点赞 | ✅ |
 
-### 互动相关
-| 接口 | 方法 | 描述 | 参数 |
+#### 4. 关注模块
+
+| 方法 | 路径 | 说明 | 认证 |
 |------|------|------|------|
-| `/api/follow/follow` | POST | 关注用户 | followId |
-| `/api/follow/list` | GET | 关注列表 | userId |
-| `/api/like/like` | POST | 点赞 | targetType, targetId |
+| POST | `/api/follow/follow` | 关注用户 | ✅ |
+| POST | `/api/follow/unfollow` | 取消关注 | ✅ |
+| GET | `/api/follow/following` | 关注列表 | ✅ |
+| GET | `/api/follow/followers` | 粉丝列表 | ✅ |
+| GET | `/api/follow/counts` | 关注数量 | ✅ |
+| GET | `/api/follow/status/{targetUserId}` | 关注状态 | ✅ |
 
-> ⚠️ **注意**：所有需要登录的接口需要在 Header 中携带 `Authorization: Bearer {access_token}`
+#### 5. Feed 流模块（二轮新增）
 
-## 核心特性
+| 方法 | 路径 | 说明 | 认证 |
+|------|------|------|------|
+| GET | `/api/feed/pull` | 拉取 Feed 流 | ✅ |
+| POST | `/api/feed/push` | 推送 Feed 流 | ✅ |
+| GET | `/api/feed/cursor` | 游标分页 | ✅ |
+
+#### 6. 优惠券模块（二轮新增）
+
+| 方法 | 路径 | 说明 | 认证 |
+|------|------|------|------|
+| POST | `/api/coupon/create` | 创建活动 | ✅ |
+| GET | `/api/coupon/list` | 活动列表 | ❌ |
+| GET | `/api/coupon/{id}` | 活动详情 | ❌ |
+| POST | `/api/coupon/{id}/grab` | 抢购优惠券 | ✅ |
+| GET | `/api/coupon/my` | 我的优惠券 | ✅ |
+
+#### 7. 收藏模块（二轮新增）
+
+| 方法 | 路径 | 说明 | 认证 |
+|------|------|------|------|
+| POST | `/api/favorite/add` | 收藏视频 | ✅ |
+| DELETE | `/api/favorite/{videoId}` | 取消收藏 | ✅ |
+| GET | `/api/favorite/list` | 收藏列表 | ✅ |
+
+#### 8. 权限管理模块
+
+| 方法 | 路径 | 说明 | 认证 |
+|------|------|------|------|
+| GET | `/api/admin/permission/my-permissions` | 我的权限 | ✅ |
+
+---
+
+## 环境要求
+
+### 必需软件
+
+| 软件 | 版本 | 下载地址 |
+|------|------|----------|
+| JDK | 8+ | https://www.oracle.com/java/technologies/downloads/ |
+| Maven | 3.6+ | https://maven.apache.org/download.cgi |
+| MySQL | 8.0+ | https://dev.mysql.com/downloads/ |
+| Redis | 6.0+ | https://redis.io/download/ |
+| Tomcat | 9.0+ | https://tomcat.apache.org/download-90.cgi |
+
+### 可选软件
+
+- **Node.js** 16+（前端开发）
+- **Docker**（容器化部署）
+- **IntelliJ IDEA**（推荐 IDE）
+
+---
+
+## 快速开始
+
+### 1. 克隆项目
+
+### 2. 配置数据库
+
+创建数据库并导入 SQL 文件：
+
+修改 `src/main/resources/db.properties`：
 
 
-### 1. 安全机制
-- 密码 SHA256+ 随机盐加密
-- Token 双重验证（Access + Refresh）
-- RBAC 权限控制
+### 3. 编译项目
 
-## 开发规范
+### 4. 部署到 Tomcat
 
-### 测试验证
-- 每个模块完成后编写单元测试
-- 使用控制台输出快速验证核心逻辑（**所有测试输出必须使用英文**）
-- 模拟异常场景测试容错能力
+### 5. 访问应用
+
+- **后端 API**: http://localhost:9090/saibo-pot/api/
+- **默认管理员账号**: admin / 123456
+
+### 6. 运行测试
+
+---
+
+## 项目结构
 
 
-### 代码规范
-- 变量命名：camelCase 驼峰命名
-- 类命名：PascalCase 大驼峰
-- 常量命名：UPPER_CASE 全大写
-- 注释完整，逻辑清晰
-- 遵循 Java 命名规范（驼峰命名）
-- 所有公共方法必须添加注释
-- 保持代码简洁，单一职责原则
-- **测试日志与控制台输出统一使用英文**
+---
 
-### 分层规范
-- **Controller 层**：接收请求，参数校验
-- **Service 层**：业务逻辑处理
-- **DAO 层**：数据库操作
-- **Entity 层**：数据实体
-- **DTO/VO 层**：数据传输/视图对象
+## 核心实现
+
+### 1. 手写 IoC 容器
+
+### 2. 声明式事务
+
+### 3. 通用 DAO 封装（基于反射）
+
+### 4. 数据库连接池
+
+### 5. Redis 缓存
+
+---
+
+## 单元测试
+
+### 测试框架
+
+- **JUnit 5**：测试框架
+- **Mockito**：Mock 对象
+
+### 测试示例
+
+### 运行测试
+
+---
+
+## 性能优化
+
+### 1. 数据库优化
+
+**索引优化**
+
+**SQL 优化**
+- ✅ 避免 `SELECT *`，只查询需要的字段
+- ✅ 使用分页限制返回结果集大小
+- ✅ 避免 N+1 查询，使用 JOIN 或批量查询
+
+### 2. Redis 缓存策略
+
+**缓存层级**
+
+**缓存更新策略**
+- **Cache-Aside**：先读缓存，Miss 后查 DB 并写入缓存
+- **Write-Through**：更新 DB 同时更新缓存
+- **TTL 过期**：设置合理的过期时间
+
+### 3. 连接池配置
+
+### 4. Feed 流优化
+
+**Pull 模式优化**
+- 使用游标分页替代 OFFSET
+- 缓存用户关注列表
+- 预加载热门视频元数据
+
+**Push 模式优化**
+- 异步推送（消息队列）
+- 批量写入 Redis
+- 大 V 特殊处理（只推活跃粉丝）
+
+---
 
 ## 常见问题
 
-### Q1: Tomcat 启动失败？
-检查端口 9090 是否被占用，或修改 `tomcat/conf/server.xml` 中的端口配置。
+### Q1: 启动时提示 "ApplicationContext not initialized"
 
-### Q2: 数据库连接失败？
-确认 MySQL 服务已启动，检查 `db.properties` 配置是否正确。
+**原因**: AppStartupListener 未正确加载  
+**解决**: 检查 `web.xml` 中是否配置了 Listener
 
-### Q3: 中文乱码问题？
-确保数据库字符集为 `utf8mb4`，并在 JDBC URL 中添加 `characterEncoding=utf8`。
+### Q2: Redis 连接失败
 
-## 参考资料
-- [Java Servlet 官方文档](https://jakarta.ee/specifications/servlet/)
-- [JDBC API 教程](https://docs.oracle.com/javase/tutorial/jdbc/)
-- [Maven 官方指南](https://maven.apache.org/guides/)
+**原因**: Redis 未启动或配置错误  
+**解决**: 
 
-## 版权说明
-本项目为 TopView2026 后端一轮考核作业，仅供学习交流使用。
+### Q3: OSS 上传返回 403
 
----
-**项目名称**：赛博聚石盆  
-**开发者**：xiaozhuo  
-**考核时间**：2024.3.26 - 2024.4.20  
-**口号**：让赤石的乐趣重新盛行！🪨✨
+**原因**: AccessKey 权限不足或 Bucket 配置错误  
+**解决**: 检查 `db.properties` 中的 OSS 配置
 
-# TopView2026 - 技术实现要求
+### Q4: 视频缓存下载失败（403）
 
-## 📋 项目概述
+**原因**: OSS Bucket 为私有权限  
+**解决**: 
+1. 使用签名 URL（已实现）
+2. 或将 Bucket 改为公共读
 
-本项目是一个基于 Java Servlet 的视频管理平台后端系统，需要实现以下核心技术模块。
+### Q5: 事务不回滚
+
+**原因**: 异常被捕获未抛出  
+**解决**: 确保异常向上抛出，或使用 `@Transactional` 注解
 
 ---
 
-## 🔧 必做功能
-
-### 1. MySQL 数据库连接池
-
-**目标**: 自主实现一个轻量级数据库连接池，提升数据库访问性能。
-
-**核心要求**:
-- 实现连接的创建、获取、归还机制
-- 支持连接池大小配置（最小连接数、最大连接数）
-- 实现连接有效性检测与自动回收
-- 支持多线程环境下的安全访问
-
-**技术要点**:
-- 使用 `java.util.concurrent` 包管理线程安全
-- 实现连接的复用机制，避免频繁创建/销毁连接
-- 提供连接超时处理与异常恢复机制
-
----
-
-### 2. CRUD 操作封装（类 ORM 实现）
-
-**目标**: 借鉴 ORM 框架思想，封装通用的数据库增删改查操作。
-
-**核心要求**:
-- 实现基于实体类的自动化 SQL 生成
-- 提供通用的 `insert`、`delete`、`update`、`select` 方法
-- 支持条件查询与分页查询
-- 实现对象与数据库记录的自动映射
-
-**技术要点**:
-- 使用 Java 反射机制解析实体类字段
-- 通过注解或命名规范映射表名与字段名
-- 封装 `PreparedStatement` 防止 SQL 注入
-- 提供灵活的查询条件构建器
-
----
-
-### 3. 日志统一处理
-
-**目标**: 使用 JDK 自带日志系统（`java.util.logging`）实现统一的日志管理。
-
-**核心要求**:
-- 支持不同日志等级（`SEVERE`、`WARNING`、`INFO`、`CONFIG`、`FINE`）
-- 在关键位置记录日志：
-  - 数据库连接建立与释放
-  - SQL 执行异常
-  - 数据验证失败
-  - 事务开始、提交、回滚
-  - 业务逻辑异常
-- 实现日志格式化输出（时间戳、类名、方法名、日志内容）
-- 支持日志文件滚动存储
-
-**技术要点**:
-- 了解面向切面编程（AOP）思想
-- 探索动态代理（CGLIB/JDK Proxy）实现日志拦截
-- 设计统一的日志工具类 `LogUtil`
-- 配置日志级别与输出策略
-
----
-
-## 🚀 进阶功能
-
-### 4. 统一 Bean 对象管理（IoC 容器）
-
-**目标**: 实现一个简单的控制反转（IoC）容器，统一管理应用中的 Bean 对象。
-
-**核心要求**:
-- 实现 Bean 的注册、获取与管理
-- 支持单例（Singleton）与原型（Prototype）模式
-- 实现依赖注入（DI）功能
-- 支持 Bean 的生命周期管理（初始化、销毁）
-
-**技术要点**:
-- 使用 `ConcurrentHashMap` 存储 Bean 实例
-- 通过反射机制创建对象实例
-- 实现构造器注入与 Setter 注入
-- 支持注解扫描与自动装配（可选）
-
----
-
-### 5. 统一异常处理
-
-**目标**: 集中管理系统中的各类异常，提供友好的错误响应。
-
-**核心要求**:
-- 定义自定义异常体系（业务异常、数据异常、权限异常等）
-- 实现全局异常处理器
-- 统一异常日志记录
-- 返回标准化的错误响应格式
-
-**技术要点**:
-- 设计异常层次结构（继承 `Exception` 或 `RuntimeException`）
-- 使用 Servlet Filter 或 Handler 捕获异常
-- 将异常信息转换为标准 JSON 响应
-- 区分开发环境与生产环境的错误信息展示
-
----
-
-### 6. 事务回滚处理
-
-**目标**: 实现数据库事务的统一管理，确保数据一致性。
-
-**核心要求**:
-- 实现事务的开始、提交、回滚机制
-- 支持声明式事务管理（可选）
-- 确保连接在同一事务中复用
-- 处理事务超时与死锁情况
-
-**技术要点**:
-- 使用 `ThreadLocal` 绑定事务与线程
-- 管理 `Connection` 的 `autoCommit` 状态
-- 实现事务传播行为（REQUIRED、REQUIRES_NEW 等）
-- 在异常发生时自动触发回滚
-
-**实现方式**:
-
-1. **手动事务管理**
-2. **函数式事务管理**
-3. **声明式事务管理（推荐）**
----
-
-## 📝 实施建议
-
-### 优先级排序
-1. **第一阶段**: 数据库连接池 + CRUD 封装 + 日志处理（必做）
-2. **第二阶段**: 统一异常处理 + 事务管理（进阶）
-3. **第三阶段**: IoC 容器（进阶）
-
-### 测试验证
-- 每个模块完成后编写单元测试
-- 使用控制台输出快速验证核心逻辑
-- 模拟异常场景测试容错能力
+## 开发规范
 
 ### 代码规范
-- 遵循 Java 命名规范（驼峰命名）
-- 所有公共方法必须添加注释
-- 保持代码简洁，单一职责原则
+
+1. **命名规范**
+   - 类名：大驼峰（PascalCase）
+   - 方法/变量：小驼峰（camelCase）
+   - 常量：全大写+下划线（UPPER_SNAKE_CASE）
+
+2. **注释规范**
+   - 类必须有类注释
+   - 公共方法必须有方法注释
+   - 复杂逻辑必须添加行内注释
+
+3. **异常处理**
+   - 使用自定义异常类
+   - 统一通过 GlobalExceptionHandler 处理
+   - 不要吞掉异常
+
+### Git 提交规范
 
 ---
 
-## 🛠️ 技术栈
+## 后续规划
 
-- **后端框架**: Java Servlet
-- **数据库**: MySQL
-- **缓存**: Redis
-- **文件存储**: 阿里云 OSS
-- **构建工具**: Maven
-- **日志系统**: java.util.logging (JDK 自带)
+### 短期目标（二轮考核）
+
+- [ ] 完成 Feed 流 Pull/Push 模式
+- [ ] 实现优惠券抢购功能
+- [ ] 添加视频收藏功能
+- [ ] 完善单元测试覆盖率 > 80%
+- [ ] 编写完整 API 文档
+
+### 中期目标
+
+- [ ] 引入消息队列（RocketMQ/Kafka）
+- [ ] 集成 Sentinel 流量控制
+- [ ] 实现分布式锁（Redis）
+- [ ] 前端页面开发（Vue/React）
+
+### 长期目标
+
+- [ ] 微服务拆分（Dubbo/gRPC）
+- [ ] 容器化部署（Docker/K8s）
+- [ ] 链路追踪（SkyWalking）
+- [ ] CI/CD 自动化
 
 ---
 
-## 📚 参考资料
+## 贡献指南
 
-- [JDBC 官方文档](https://docs.oracle.com/javase/tutorial/jdbc/)
-- [Java Logging API](https://docs.oracle.com/javase/8/docs/api/java/util/logging/package-summary.html)
-- [设计模式 - 工厂模式与单例模式](https://refactoring.guru/design-patterns)
-- [ORM 框架原理](https://mybatis.org/mybatis-3/)
+欢迎提交 Issue 和 Pull Request！
+
+1. Fork 本仓库
+2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
+3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
+4. 推送到分支 (`git push origin feature/AmazingFeature`)
+5. 开启 Pull Request
+
+---
+
+## 许可证
+
+本项目仅供学习和考核使用。
+
+---
+
+## 联系方式
+
+- **项目团队**: TopView2026 开发组
+- **邮箱**: support@topview2026.com
+
+---
+
+**最后更新时间**: 2026-04-28
+
+
+
 
 

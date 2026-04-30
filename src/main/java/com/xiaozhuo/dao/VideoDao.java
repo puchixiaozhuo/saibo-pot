@@ -117,12 +117,65 @@ public interface VideoDao {
     int decrementCommentCount(Long id);
 
     /**
+     * 增加视频收藏量
+     * @param id
+     * @return
+     */
+    int incrementFavoriteCount(Long id);
+
+    /**
+     * 减少视频收藏量
+     * @param id
+     * @return
+     */
+    int decrementFavoriteCount(Long id);
+
+    /**
      * 根据视频ID获取作者ID
      * @param conn 数据库连接
      * @param videoId 视频ID
      * @return 作者ID
      */
     Long getAuthorIdById(Connection conn, Long videoId);
-}
 
+    /**
+     * 根据多个作者ID查询视频列表（分页）
+     * @param authorIds 作者ID列表
+     * @param pageNum 页码
+     * @param pageSize 每页大小
+     * @return 视频列表
+     */
+    List<VideoInfo> selectVideosByAuthorIds(List<Long> authorIds, int pageNum, int pageSize);
+
+    /**
+     * 统计多个作者的視頻总数
+     * @param authorIds 作者ID列表
+     * @return 视频总数
+     */
+    long countVideosByAuthorIds(List<Long> authorIds);
+
+    /**
+     * 基于游标查询视频（加分项）
+     * @param authorIds 作者ID列表
+     * @param cursor 游标（最后一条视频ID）
+     * @param pageSize 每页大小
+     * @return 视频列表
+     */
+    List<VideoInfo> selectVideosByAuthorIdsWithCursor(List<Long> authorIds, String cursor, int pageSize);
+
+    /**
+     * 统计用户的未读Feed数量
+     * @param authorIds 关注的作者ID列表
+     * @param lastReadTime 最后读取时间
+     * @return 未读视频数量
+     */
+    long countUnreadVideos(List<Long> authorIds, java.time.LocalDateTime lastReadTime);
+
+    /**
+     * 根据多个视频ID查询视频列表（用于Push模式）
+     * @param videoIds 视频ID列表
+     * @return 视频列表
+     */
+    List<VideoInfo> selectVideosByIds(List<Long> videoIds);
+}
 

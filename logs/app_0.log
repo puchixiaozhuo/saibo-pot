@@ -1,0 +1,403 @@
+[SEVERE] 2026-04-25 21:12:42 - LogTest.testDifferentLevels() - [SEVERE] This is a severe error message
+[WARNING] 2026-04-25 21:12:42 - LogTest.testDifferentLevels() - [WARNING] This is a warning message
+[INFO] 2026-04-25 21:12:42 - LogTest.testDifferentLevels() - [INFO] This is an info message
+[CONFIG] 2026-04-25 21:12:42 - LogTest.testDifferentLevels() - [CONFIG] This is a config message
+[FINE] 2026-04-25 21:12:42 - LogTest.testDifferentLevels() - [FINE] This is a fine/debug message
+[INFO] 2026-04-25 21:12:42 - LogUtil.logBusiness() - [Business] UserLogin - User admin logged in successfully
+[INFO] 2026-04-25 21:12:42 - LogUtil.logBusiness() - [Business] VideoUpload - Video uploaded: ID=123, Size=50MB
+[INFO] 2026-04-25 21:12:42 - LogUtil.logBusiness() - [Business] CommentPost - Comment posted by user ID=5
+[SEVERE] 2026-04-25 21:12:42 - LogUtil.logError() - [Error] Null pointer exception occurred
+Exception: java.lang.NullPointerException: Cannot invoke "String.length()" because "str" is null
+    at com.xiaozhuo.test.LogTest.testErrorLogging(LogTest.java:72)
+    at com.xiaozhuo.test.LogTest.main(LogTest.java:23)
+[SEVERE] 2026-04-25 21:12:42 - LogUtil.logError() - [Error] Database operation failed
+Exception: java.lang.RuntimeException: Database connection timeout
+    at com.xiaozhuo.test.LogTest.testErrorLogging(LogTest.java:79)
+    at com.xiaozhuo.test.LogTest.main(LogTest.java:23)
+[FINE] 2026-04-25 21:12:42 - LogUtil.logSql() - [SQL] SELECT * FROM sys_user WHERE id = ? | Params: 1
+[FINE] 2026-04-25 21:12:42 - LogUtil.logSql() - [SQL] INSERT INTO video_info (title, author_id) VALUES (?, ?) | Params: Test Video, 123
+[FINE] 2026-04-25 21:12:42 - LogUtil.logSql() - [SQL] UPDATE sys_user SET nickname = ? WHERE id = ? | Params: New Nickname, 1
+[FINE] 2026-04-25 21:12:42 - LogUtil.logSql() - [SQL] DELETE FROM video_comment WHERE id = ? | Params: 456
+[FINE] 2026-04-25 21:12:42 - LogUtil.logTransaction() - [Transaction] Transaction started
+[FINE] 2026-04-25 21:12:42 - LogUtil.logTransaction() - [Transaction] Executing operation 1: INSERT user
+[FINE] 2026-04-25 21:12:42 - LogUtil.logTransaction() - [Transaction] Executing operation 2: INSERT video
+[FINE] 2026-04-25 21:12:42 - LogUtil.logTransaction() - [Transaction] Transaction committed successfully
+[FINE] 2026-04-25 21:12:42 - LogUtil.logTransaction() - [Transaction] New transaction started
+[FINE] 2026-04-25 21:12:42 - LogUtil.logTransaction() - [Transaction] Executing operation: UPDATE balance
+[FINE] 2026-04-25 21:12:42 - LogUtil.logTransaction() - [Transaction] Transaction rolled back due to error
+[INFO] 2026-04-27 18:57:47 - BaseDaoImpl.<init>() - BaseDaoImpl initialized for entity: User, table: sys_user, primary key: id
+[INFO] 2026-04-27 18:57:47 - TransactionProxyFactory.createProxy() - Creating transaction proxy for: UserServiceImpl
+[INFO] 2026-04-27 18:57:47 - ServiceFactory.getService() - Created and cached service: userService
+[FINE] 2026-04-27 18:57:48 - LogUtil.logSql() - [SQL] SELECT * FROM sys_user WHERE username = ? | Params: admin
+[INFO] 2026-04-27 18:57:48 - LogUtil.logBusiness() - [Business] SELECT - Mapped 1 entities from ResultSet
+[INFO] 2026-04-27 19:11:05 - BaseDaoImpl.<init>() - BaseDaoImpl initialized for entity: User, table: sys_user, primary key: id
+[INFO] 2026-04-27 19:11:05 - TransactionProxyFactory.createProxy() - Creating transaction proxy for: UserServiceImpl
+[INFO] 2026-04-27 19:11:05 - ServiceFactory.getService() - Created and cached service: userService
+[FINE] 2026-04-27 19:11:05 - LogUtil.logSql() - [SQL] SELECT * FROM sys_user WHERE username = ? | Params: admin
+[INFO] 2026-04-27 19:11:06 - LogUtil.logBusiness() - [Business] SELECT - Mapped 1 entities from ResultSet
+[INFO] 2026-04-30 01:06:05 - ConnectionPool.initializePool() - Initializing connection pool: coreSize=5, maxSize=10, timeout=3000ms
+[FINE] 2026-04-30 01:06:05 - ConnectionPool.createNewConnection() - Created new database connection: 500179317
+[FINE] 2026-04-30 01:06:05 - ConnectionPool.initializePool() - Created initial connection #1
+[FINE] 2026-04-30 01:06:05 - ConnectionPool.createNewConnection() - Created new database connection: 1048027629
+[FINE] 2026-04-30 01:06:05 - ConnectionPool.initializePool() - Created initial connection #2
+[FINE] 2026-04-30 01:06:05 - ConnectionPool.createNewConnection() - Created new database connection: 599491651
+[FINE] 2026-04-30 01:06:05 - ConnectionPool.initializePool() - Created initial connection #3
+[FINE] 2026-04-30 01:06:05 - ConnectionPool.createNewConnection() - Created new database connection: 302870502
+[FINE] 2026-04-30 01:06:05 - ConnectionPool.initializePool() - Created initial connection #4
+[FINE] 2026-04-30 01:06:05 - ConnectionPool.createNewConnection() - Created new database connection: 876926621
+[FINE] 2026-04-30 01:06:05 - ConnectionPool.initializePool() - Created initial connection #5
+[INFO] 2026-04-30 01:06:05 - ConnectionPool.initializePool() - Connection pool initialized successfully with 5 connections
+[FINE] 2026-04-30 01:06:05 - ConnectionPool.getConnection() - Connection retrieved from pool. Active: 1, Idle: 4
+[FINE] 2026-04-30 01:06:05 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 0, Idle: 5
+[INFO] 2026-04-30 01:11:20 - ConnectionPool.initializePool() - Initializing connection pool: coreSize=5, maxSize=10, timeout=3000ms
+[FINE] 2026-04-30 01:11:20 - ConnectionPool.createNewConnection() - Created new database connection: 1048027629
+[FINE] 2026-04-30 01:11:20 - ConnectionPool.initializePool() - Created initial connection #1
+[FINE] 2026-04-30 01:11:20 - ConnectionPool.createNewConnection() - Created new database connection: 599491651
+[FINE] 2026-04-30 01:11:20 - ConnectionPool.initializePool() - Created initial connection #2
+[FINE] 2026-04-30 01:11:20 - ConnectionPool.createNewConnection() - Created new database connection: 302870502
+[FINE] 2026-04-30 01:11:20 - ConnectionPool.initializePool() - Created initial connection #3
+[FINE] 2026-04-30 01:11:20 - ConnectionPool.createNewConnection() - Created new database connection: 876926621
+[FINE] 2026-04-30 01:11:20 - ConnectionPool.initializePool() - Created initial connection #4
+[FINE] 2026-04-30 01:11:20 - ConnectionPool.createNewConnection() - Created new database connection: 1786364562
+[FINE] 2026-04-30 01:11:20 - ConnectionPool.initializePool() - Created initial connection #5
+[INFO] 2026-04-30 01:11:20 - ConnectionPool.initializePool() - Connection pool initialized successfully with 5 connections
+[FINE] 2026-04-30 01:11:20 - ConnectionPool.getConnection() - Connection retrieved from pool. Active: 1, Idle: 4
+[FINE] 2026-04-30 01:11:21 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 0, Idle: 5
+[FINE] 2026-04-30 01:11:21 - ConnectionPool.getConnection() - Connection retrieved from pool. Active: 1, Idle: 4
+[FINE] 2026-04-30 01:11:21 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 0, Idle: 5
+[FINE] 2026-04-30 01:11:21 - ConnectionPool.getConnection() - Connection retrieved from pool. Active: 1, Idle: 4
+[FINE] 2026-04-30 01:11:21 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 0, Idle: 5
+[FINE] 2026-04-30 01:11:21 - ConnectionPool.getConnection() - Connection retrieved from pool. Active: 1, Idle: 4
+[FINE] 2026-04-30 01:11:21 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 0, Idle: 5
+[FINE] 2026-04-30 01:11:21 - ConnectionPool.getConnection() - Connection retrieved from pool. Active: 1, Idle: 4
+[FINE] 2026-04-30 01:11:21 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 0, Idle: 5
+[INFO] 2026-04-30 01:19:10 - ConnectionPool.initializePool() - Initializing connection pool: coreSize=5, maxSize=10, timeout=3000ms
+[FINE] 2026-04-30 01:19:10 - ConnectionPool.createNewConnection() - Created new database connection: 500179317
+[FINE] 2026-04-30 01:19:10 - ConnectionPool.initializePool() - Created initial connection #1
+[FINE] 2026-04-30 01:19:10 - ConnectionPool.createNewConnection() - Created new database connection: 1048027629
+[FINE] 2026-04-30 01:19:10 - ConnectionPool.initializePool() - Created initial connection #2
+[FINE] 2026-04-30 01:19:10 - ConnectionPool.createNewConnection() - Created new database connection: 599491651
+[FINE] 2026-04-30 01:19:10 - ConnectionPool.initializePool() - Created initial connection #3
+[FINE] 2026-04-30 01:19:10 - ConnectionPool.createNewConnection() - Created new database connection: 302870502
+[FINE] 2026-04-30 01:19:10 - ConnectionPool.initializePool() - Created initial connection #4
+[FINE] 2026-04-30 01:19:10 - ConnectionPool.createNewConnection() - Created new database connection: 876926621
+[FINE] 2026-04-30 01:19:10 - ConnectionPool.initializePool() - Created initial connection #5
+[INFO] 2026-04-30 01:19:10 - ConnectionPool.initializePool() - Connection pool initialized successfully with 5 connections
+[FINE] 2026-04-30 01:19:10 - ConnectionPool.getConnection() - Connection retrieved from pool. Active: 1, Idle: 4
+[FINE] 2026-04-30 01:19:10 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 0, Idle: 5
+[INFO] 2026-04-30 01:19:17 - ConnectionPool.initializePool() - Initializing connection pool: coreSize=5, maxSize=10, timeout=3000ms
+[FINE] 2026-04-30 01:19:17 - ConnectionPool.createNewConnection() - Created new database connection: 1048027629
+[FINE] 2026-04-30 01:19:17 - ConnectionPool.initializePool() - Created initial connection #1
+[FINE] 2026-04-30 01:19:17 - ConnectionPool.createNewConnection() - Created new database connection: 599491651
+[FINE] 2026-04-30 01:19:17 - ConnectionPool.initializePool() - Created initial connection #2
+[FINE] 2026-04-30 01:19:17 - ConnectionPool.createNewConnection() - Created new database connection: 302870502
+[FINE] 2026-04-30 01:19:17 - ConnectionPool.initializePool() - Created initial connection #3
+[FINE] 2026-04-30 01:19:17 - ConnectionPool.createNewConnection() - Created new database connection: 876926621
+[FINE] 2026-04-30 01:19:17 - ConnectionPool.initializePool() - Created initial connection #4
+[FINE] 2026-04-30 01:19:17 - ConnectionPool.createNewConnection() - Created new database connection: 1786364562
+[FINE] 2026-04-30 01:19:17 - ConnectionPool.initializePool() - Created initial connection #5
+[INFO] 2026-04-30 01:19:17 - ConnectionPool.initializePool() - Connection pool initialized successfully with 5 connections
+[FINE] 2026-04-30 01:19:17 - ConnectionPool.getConnection() - Connection retrieved from pool. Active: 1, Idle: 4
+[FINE] 2026-04-30 01:19:17 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 0, Idle: 5
+[FINE] 2026-04-30 01:19:17 - ConnectionPool.getConnection() - Connection retrieved from pool. Active: 1, Idle: 4
+[INFO] 2026-04-30 01:19:17 - LogUtil.logBusiness() - [Business] STOCK_DECREMENT - Activity 1 stock decremented successfully
+[INFO] 2026-04-30 01:19:17 - LogUtil.logBusiness() - [Business] INSERT_COUPON - User 6 received coupon: CPN20260430011917F906329E
+[FINE] 2026-04-30 01:19:17 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 0, Idle: 5
+[FINE] 2026-04-30 01:19:17 - ConnectionPool.getConnection() - Connection retrieved from pool. Active: 1, Idle: 4
+[FINE] 2026-04-30 01:19:17 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 0, Idle: 5
+[FINE] 2026-04-30 01:19:17 - ConnectionPool.getConnection() - Connection retrieved from pool. Active: 1, Idle: 4
+[FINE] 2026-04-30 01:19:17 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 0, Idle: 5
+[INFO] 2026-04-30 01:21:28 - ConnectionPool.initializePool() - Initializing connection pool: coreSize=5, maxSize=10, timeout=3000ms
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.createNewConnection() - Created new database connection: 477414893
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.initializePool() - Created initial connection #1
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.createNewConnection() - Created new database connection: 1716763328
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.initializePool() - Created initial connection #2
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.createNewConnection() - Created new database connection: 1673779346
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.initializePool() - Created initial connection #3
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.createNewConnection() - Created new database connection: 77048160
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.initializePool() - Created initial connection #4
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.createNewConnection() - Created new database connection: 833157057
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.initializePool() - Created initial connection #5
+[INFO] 2026-04-30 01:21:29 - ConnectionPool.initializePool() - Connection pool initialized successfully with 5 connections
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.getConnection() - Connection retrieved from pool. Active: 1, Idle: 0
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.getConnection() - Connection retrieved from pool. Active: 3, Idle: 0
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.getConnection() - Connection retrieved from pool. Active: 2, Idle: 0
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.getConnection() - Connection retrieved from pool. Active: 5, Idle: 0
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.getConnection() - Connection retrieved from pool. Active: 5, Idle: 0
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.createNewConnection() - Created new database connection: 288777523
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.createNewConnection() - Created new database connection: 784858790
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.getConnection() - Created new connection. Active: 7
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.createNewConnection() - Created new database connection: 1303253093
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.getConnection() - Created new connection. Active: 8
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.createNewConnection() - Created new database connection: 572284290
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.createNewConnection() - Created new database connection: 453891802
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.getConnection() - Created new connection. Active: 10
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.getConnection() - Created new connection. Active: 6
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.createNewConnection() - Created new database connection: 1295671000
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.createNewConnection() - Created new database connection: 465121367
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.getConnection() - Created new connection. Active: 12
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.createNewConnection() - Created new database connection: 431325537
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.createNewConnection() - Created new database connection: 1824452310
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.getConnection() - Created new connection. Active: 14
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.createNewConnection() - Created new database connection: 531275822
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.getConnection() - Created new connection. Active: 9
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.createNewConnection() - Created new database connection: 646878573
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.getConnection() - Created new connection. Active: 16
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.createNewConnection() - Created new database connection: 1002871799
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.createNewConnection() - Created new database connection: 265511875
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.createNewConnection() - Created new database connection: 1530692798
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.getConnection() - Created new connection. Active: 19
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.createNewConnection() - Created new database connection: 330762040
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.getConnection() - Created new connection. Active: 11
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.getConnection() - Created new connection. Active: 13
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.createNewConnection() - Created new database connection: 379650029
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.createNewConnection() - Created new database connection: 185911765
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.createNewConnection() - Created new database connection: 775065553
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.createNewConnection() - Created new database connection: 637234679
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.createNewConnection() - Created new database connection: 1461194693
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.getConnection() - Created new connection. Active: 25
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.getConnection() - Created new connection. Active: 15
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.createNewConnection() - Created new database connection: 428948058
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.createNewConnection() - Created new database connection: 969994862
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.createNewConnection() - Created new database connection: 1465827314
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.createNewConnection() - Created new database connection: 1412795392
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.getConnection() - Created new connection. Active: 29
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.getConnection() - Created new connection. Active: 17
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.createNewConnection() - Created new database connection: 1298794101
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.getConnection() - Created new connection. Active: 30
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.getConnection() - Created new connection. Active: 18
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.createNewConnection() - Created new database connection: 779499290
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.createNewConnection() - Created new database connection: 1223378813
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.createNewConnection() - Created new database connection: 546163759
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.createNewConnection() - Created new database connection: 110636332
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.createNewConnection() - Created new database connection: 336173499
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.createNewConnection() - Created new database connection: 1989440187
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.createNewConnection() - Created new database connection: 640454177
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.getConnection() - Created new connection. Active: 20
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.createNewConnection() - Created new database connection: 1336888895
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.createNewConnection() - Created new database connection: 929603413
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.createNewConnection() - Created new database connection: 229288970
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.createNewConnection() - Created new database connection: 19560189
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.createNewConnection() - Created new database connection: 679323923
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.getConnection() - Created new connection. Active: 42
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.getConnection() - Created new connection. Active: 21
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.getConnection() - Created new connection. Active: 22
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.createNewConnection() - Created new database connection: 371613471
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.getConnection() - Created new connection. Active: 43
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.getConnection() - Created new connection. Active: 23
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.getConnection() - Created new connection. Active: 24
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.getConnection() - Created new connection. Active: 26
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.createNewConnection() - Created new database connection: 954769658
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.getConnection() - Created new connection. Active: 27
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.createNewConnection() - Created new database connection: 265743426
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.getConnection() - Created new connection. Active: 28
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.createNewConnection() - Created new database connection: 1871435357
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.createNewConnection() - Created new database connection: 859583529
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.createNewConnection() - Created new database connection: 849373593
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.createNewConnection() - Created new database connection: 1197586116
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.getConnection() - Created new connection. Active: 31
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.getConnection() - Created new connection. Active: 32
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.getConnection() - Created new connection. Active: 33
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.getConnection() - Created new connection. Active: 34
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.getConnection() - Created new connection. Active: 35
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.getConnection() - Created new connection. Active: 36
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.getConnection() - Created new connection. Active: 37
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.getConnection() - Created new connection. Active: 38
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.getConnection() - Created new connection. Active: 39
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.getConnection() - Created new connection. Active: 40
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.getConnection() - Created new connection. Active: 41
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.getConnection() - Created new connection. Active: 44
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.getConnection() - Created new connection. Active: 45
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.getConnection() - Created new connection. Active: 46
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.getConnection() - Created new connection. Active: 47
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.getConnection() - Created new connection. Active: 48
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.getConnection() - Created new connection. Active: 49
+[INFO] 2026-04-30 01:21:29 - LogUtil.logBusiness() - [Business] OPTIMISTIC_LOCK_FAIL - Activity 1 stock decrement failed (stock=0 or version conflict)
+[INFO] 2026-04-30 01:21:29 - LogUtil.logBusiness() - [Business] OPTIMISTIC_LOCK_FAIL - Activity 1 stock decrement failed (stock=0 or version conflict)
+[INFO] 2026-04-30 01:21:29 - LogUtil.logBusiness() - [Business] OPTIMISTIC_LOCK_FAIL - Activity 1 stock decrement failed (stock=0 or version conflict)
+[INFO] 2026-04-30 01:21:29 - LogUtil.logBusiness() - [Business] OPTIMISTIC_LOCK_FAIL - Activity 1 stock decrement failed (stock=0 or version conflict)
+[INFO] 2026-04-30 01:21:29 - LogUtil.logBusiness() - [Business] OPTIMISTIC_LOCK_FAIL - Activity 1 stock decrement failed (stock=0 or version conflict)
+[INFO] 2026-04-30 01:21:29 - LogUtil.logBusiness() - [Business] OPTIMISTIC_LOCK_FAIL - Activity 1 stock decrement failed (stock=0 or version conflict)
+[INFO] 2026-04-30 01:21:29 - LogUtil.logBusiness() - [Business] OPTIMISTIC_LOCK_FAIL - Activity 1 stock decrement failed (stock=0 or version conflict)
+[INFO] 2026-04-30 01:21:29 - LogUtil.logBusiness() - [Business] STOCK_DECREMENT - Activity 1 stock decremented successfully
+[INFO] 2026-04-30 01:21:29 - LogUtil.logBusiness() - [Business] OPTIMISTIC_LOCK_FAIL - Activity 1 stock decrement failed (stock=0 or version conflict)
+[INFO] 2026-04-30 01:21:29 - LogUtil.logBusiness() - [Business] OPTIMISTIC_LOCK_FAIL - Activity 1 stock decrement failed (stock=0 or version conflict)
+[INFO] 2026-04-30 01:21:29 - LogUtil.logBusiness() - [Business] OPTIMISTIC_LOCK_FAIL - Activity 1 stock decrement failed (stock=0 or version conflict)
+[INFO] 2026-04-30 01:21:29 - LogUtil.logBusiness() - [Business] OPTIMISTIC_LOCK_FAIL - Activity 1 stock decrement failed (stock=0 or version conflict)
+[INFO] 2026-04-30 01:21:29 - LogUtil.logBusiness() - [Business] OPTIMISTIC_LOCK_FAIL - Activity 1 stock decrement failed (stock=0 or version conflict)
+[INFO] 2026-04-30 01:21:29 - LogUtil.logBusiness() - [Business] OPTIMISTIC_LOCK_FAIL - Activity 1 stock decrement failed (stock=0 or version conflict)
+[INFO] 2026-04-30 01:21:29 - LogUtil.logBusiness() - [Business] OPTIMISTIC_LOCK_FAIL - Activity 1 stock decrement failed (stock=0 or version conflict)
+[INFO] 2026-04-30 01:21:29 - LogUtil.logBusiness() - [Business] OPTIMISTIC_LOCK_FAIL - Activity 1 stock decrement failed (stock=0 or version conflict)
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 36, Idle: 13
+[INFO] 2026-04-30 01:21:29 - LogUtil.logBusiness() - [Business] OPTIMISTIC_LOCK_FAIL - Activity 1 stock decrement failed (stock=0 or version conflict)
+[INFO] 2026-04-30 01:21:29 - LogUtil.logBusiness() - [Business] OPTIMISTIC_LOCK_FAIL - Activity 1 stock decrement failed (stock=0 or version conflict)
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 48, Idle: 2
+[INFO] 2026-04-30 01:21:29 - LogUtil.logBusiness() - [Business] OPTIMISTIC_LOCK_FAIL - Activity 1 stock decrement failed (stock=0 or version conflict)
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 47, Idle: 2
+[INFO] 2026-04-30 01:21:29 - LogUtil.logBusiness() - [Business] OPTIMISTIC_LOCK_FAIL - Activity 1 stock decrement failed (stock=0 or version conflict)
+[INFO] 2026-04-30 01:21:29 - LogUtil.logBusiness() - [Business] OPTIMISTIC_LOCK_FAIL - Activity 1 stock decrement failed (stock=0 or version conflict)
+[INFO] 2026-04-30 01:21:29 - LogUtil.logBusiness() - [Business] OPTIMISTIC_LOCK_FAIL - Activity 1 stock decrement failed (stock=0 or version conflict)
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 32, Idle: 17
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 46, Idle: 3
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 45, Idle: 4
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 44, Idle: 5
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 41, Idle: 8
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 31, Idle: 18
+[INFO] 2026-04-30 01:21:29 - LogUtil.logBusiness() - [Business] OPTIMISTIC_LOCK_FAIL - Activity 1 stock decrement failed (stock=0 or version conflict)
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 43, Idle: 6
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 42, Idle: 7
+[INFO] 2026-04-30 01:21:29 - LogUtil.logBusiness() - [Business] OPTIMISTIC_LOCK_FAIL - Activity 1 stock decrement failed (stock=0 or version conflict)
+[INFO] 2026-04-30 01:21:29 - LogUtil.logBusiness() - [Business] OPTIMISTIC_LOCK_FAIL - Activity 1 stock decrement failed (stock=0 or version conflict)
+[INFO] 2026-04-30 01:21:29 - LogUtil.logBusiness() - [Business] OPTIMISTIC_LOCK_FAIL - Activity 1 stock decrement failed (stock=0 or version conflict)
+[INFO] 2026-04-30 01:21:29 - LogUtil.logBusiness() - [Business] OPTIMISTIC_LOCK_FAIL - Activity 1 stock decrement failed (stock=0 or version conflict)
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 34, Idle: 15
+[INFO] 2026-04-30 01:21:29 - LogUtil.logBusiness() - [Business] OPTIMISTIC_LOCK_FAIL - Activity 1 stock decrement failed (stock=0 or version conflict)
+[INFO] 2026-04-30 01:21:29 - LogUtil.logBusiness() - [Business] OPTIMISTIC_LOCK_FAIL - Activity 1 stock decrement failed (stock=0 or version conflict)
+[INFO] 2026-04-30 01:21:29 - LogUtil.logBusiness() - [Business] OPTIMISTIC_LOCK_FAIL - Activity 1 stock decrement failed (stock=0 or version conflict)
+[INFO] 2026-04-30 01:21:29 - LogUtil.logBusiness() - [Business] OPTIMISTIC_LOCK_FAIL - Activity 1 stock decrement failed (stock=0 or version conflict)
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 40, Idle: 9
+[INFO] 2026-04-30 01:21:29 - LogUtil.logBusiness() - [Business] OPTIMISTIC_LOCK_FAIL - Activity 1 stock decrement failed (stock=0 or version conflict)
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 39, Idle: 10
+[INFO] 2026-04-30 01:21:29 - LogUtil.logBusiness() - [Business] OPTIMISTIC_LOCK_FAIL - Activity 1 stock decrement failed (stock=0 or version conflict)
+[INFO] 2026-04-30 01:21:29 - LogUtil.logBusiness() - [Business] OPTIMISTIC_LOCK_FAIL - Activity 1 stock decrement failed (stock=0 or version conflict)
+[INFO] 2026-04-30 01:21:29 - LogUtil.logBusiness() - [Business] OPTIMISTIC_LOCK_FAIL - Activity 1 stock decrement failed (stock=0 or version conflict)
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 38, Idle: 11
+[INFO] 2026-04-30 01:21:29 - LogUtil.logBusiness() - [Business] OPTIMISTIC_LOCK_FAIL - Activity 1 stock decrement failed (stock=0 or version conflict)
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 29, Idle: 20
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 22, Idle: 27
+[INFO] 2026-04-30 01:21:29 - LogUtil.logBusiness() - [Business] OPTIMISTIC_LOCK_FAIL - Activity 1 stock decrement failed (stock=0 or version conflict)
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 37, Idle: 12
+[INFO] 2026-04-30 01:21:29 - LogUtil.logBusiness() - [Business] OPTIMISTIC_LOCK_FAIL - Activity 1 stock decrement failed (stock=0 or version conflict)
+[INFO] 2026-04-30 01:21:29 - LogUtil.logBusiness() - [Business] OPTIMISTIC_LOCK_FAIL - Activity 1 stock decrement failed (stock=0 or version conflict)
+[INFO] 2026-04-30 01:21:29 - LogUtil.logBusiness() - [Business] OPTIMISTIC_LOCK_FAIL - Activity 1 stock decrement failed (stock=0 or version conflict)
+[INFO] 2026-04-30 01:21:29 - LogUtil.logBusiness() - [Business] OPTIMISTIC_LOCK_FAIL - Activity 1 stock decrement failed (stock=0 or version conflict)
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 35, Idle: 14
+[INFO] 2026-04-30 01:21:29 - LogUtil.logBusiness() - [Business] OPTIMISTIC_LOCK_FAIL - Activity 1 stock decrement failed (stock=0 or version conflict)
+[INFO] 2026-04-30 01:21:29 - LogUtil.logBusiness() - [Business] OPTIMISTIC_LOCK_FAIL - Activity 1 stock decrement failed (stock=0 or version conflict)
+[INFO] 2026-04-30 01:21:29 - LogUtil.logBusiness() - [Business] OPTIMISTIC_LOCK_FAIL - Activity 1 stock decrement failed (stock=0 or version conflict)
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 21, Idle: 28
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 33, Idle: 16
+[INFO] 2026-04-30 01:21:29 - LogUtil.logBusiness() - [Business] OPTIMISTIC_LOCK_FAIL - Activity 1 stock decrement failed (stock=0 or version conflict)
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 18, Idle: 31
+[INFO] 2026-04-30 01:21:29 - LogUtil.logBusiness() - [Business] OPTIMISTIC_LOCK_FAIL - Activity 1 stock decrement failed (stock=0 or version conflict)
+[INFO] 2026-04-30 01:21:29 - LogUtil.logBusiness() - [Business] OPTIMISTIC_LOCK_FAIL - Activity 1 stock decrement failed (stock=0 or version conflict)
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 17, Idle: 32
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 30, Idle: 19
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 28, Idle: 21
+[INFO] 2026-04-30 01:21:29 - LogUtil.logBusiness() - [Business] OPTIMISTIC_LOCK_FAIL - Activity 1 stock decrement failed (stock=0 or version conflict)
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 27, Idle: 22
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 26, Idle: 23
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 25, Idle: 24
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 24, Idle: 25
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 15, Idle: 34
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 23, Idle: 26
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 20, Idle: 29
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 19, Idle: 30
+[INFO] 2026-04-30 01:21:29 - LogUtil.logBusiness() - [Business] OPTIMISTIC_LOCK_FAIL - Activity 1 stock decrement failed (stock=0 or version conflict)
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 16, Idle: 33
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 14, Idle: 35
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 13, Idle: 36
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 1, Idle: 48
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 12, Idle: 37
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 11, Idle: 38
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 9, Idle: 40
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 9, Idle: 40
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 8, Idle: 41
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 7, Idle: 42
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 6, Idle: 43
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 5, Idle: 44
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 4, Idle: 45
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 3, Idle: 46
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 2, Idle: 47
+[INFO] 2026-04-30 01:21:29 - LogUtil.logBusiness() - [Business] INSERT_COUPON - User 20 received coupon: CPN20260430012129072EAC50
+[FINE] 2026-04-30 01:21:29 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 0, Idle: 49
+[INFO] 2026-04-30 17:37:27 - BaseDaoImpl.<init>() - BaseDaoImpl initialized for entity: VideoInfo, table: video_info, primary key: id
+[INFO] 2026-04-30 17:37:27 - BaseDaoImpl.<init>() - BaseDaoImpl initialized for entity: User, table: sys_user, primary key: id
+[INFO] 2026-04-30 17:37:27 - ConnectionPool.initializePool() - Initializing connection pool: coreSize=5, maxSize=10, timeout=3000ms
+[FINE] 2026-04-30 17:37:27 - ConnectionPool.createNewConnection() - Created new database connection: 589835301
+[FINE] 2026-04-30 17:37:27 - ConnectionPool.initializePool() - Created initial connection #1
+[FINE] 2026-04-30 17:37:27 - ConnectionPool.createNewConnection() - Created new database connection: 112466394
+[FINE] 2026-04-30 17:37:27 - ConnectionPool.initializePool() - Created initial connection #2
+[FINE] 2026-04-30 17:37:27 - ConnectionPool.createNewConnection() - Created new database connection: 1493625803
+[FINE] 2026-04-30 17:37:27 - ConnectionPool.initializePool() - Created initial connection #3
+[FINE] 2026-04-30 17:37:27 - ConnectionPool.createNewConnection() - Created new database connection: 64133603
+[FINE] 2026-04-30 17:37:27 - ConnectionPool.initializePool() - Created initial connection #4
+[FINE] 2026-04-30 17:37:27 - ConnectionPool.createNewConnection() - Created new database connection: 999522307
+[FINE] 2026-04-30 17:37:27 - ConnectionPool.initializePool() - Created initial connection #5
+[INFO] 2026-04-30 17:37:27 - ConnectionPool.initializePool() - Connection pool initialized successfully with 5 connections
+[FINE] 2026-04-30 17:37:27 - ConnectionPool.getConnection() - Connection retrieved from pool. Active: 1, Idle: 4
+[INFO] 2026-04-30 17:37:28 - LogUtil.logBusiness() - [Business] GET_FOLLOWER_USER_IDS - User 1 has 0 followers
+[FINE] 2026-04-30 17:37:28 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 0, Idle: 5
+[FINE] 2026-04-30 17:37:28 - ConnectionPool.getConnection() - Connection retrieved from pool. Active: 1, Idle: 4
+[INFO] 2026-04-30 17:37:28 - LogUtil.logBusiness() - [Business] GET_FOLLOWER_USER_IDS - User 1 has 0 followers
+[FINE] 2026-04-30 17:37:28 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 0, Idle: 5
+[FINE] 2026-04-30 17:37:28 - ConnectionPool.getConnection() - Connection retrieved from pool. Active: 1, Idle: 4
+[INFO] 2026-04-30 17:37:28 - LogUtil.logBusiness() - [Business] GET_FOLLOWING_USER_IDS - User 2 follows 0 users
+[FINE] 2026-04-30 17:37:28 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 0, Idle: 5
+[INFO] 2026-04-30 17:50:23 - BaseDaoImpl.<init>() - BaseDaoImpl initialized for entity: VideoInfo, table: video_info, primary key: id
+[INFO] 2026-04-30 17:50:23 - BaseDaoImpl.<init>() - BaseDaoImpl initialized for entity: User, table: sys_user, primary key: id
+[INFO] 2026-04-30 17:50:23 - ConnectionPool.initializePool() - Initializing connection pool: coreSize=5, maxSize=10, timeout=3000ms
+[FINE] 2026-04-30 17:50:23 - ConnectionPool.createNewConnection() - Created new database connection: 459848100
+[FINE] 2026-04-30 17:50:23 - ConnectionPool.initializePool() - Created initial connection #1
+[FINE] 2026-04-30 17:50:23 - ConnectionPool.createNewConnection() - Created new database connection: 992768706
+[FINE] 2026-04-30 17:50:23 - ConnectionPool.initializePool() - Created initial connection #2
+[FINE] 2026-04-30 17:50:23 - ConnectionPool.createNewConnection() - Created new database connection: 393040818
+[FINE] 2026-04-30 17:50:23 - ConnectionPool.initializePool() - Created initial connection #3
+[FINE] 2026-04-30 17:50:23 - ConnectionPool.createNewConnection() - Created new database connection: 1368594774
+[FINE] 2026-04-30 17:50:23 - ConnectionPool.initializePool() - Created initial connection #4
+[FINE] 2026-04-30 17:50:23 - ConnectionPool.createNewConnection() - Created new database connection: 1447499999
+[FINE] 2026-04-30 17:50:23 - ConnectionPool.initializePool() - Created initial connection #5
+[INFO] 2026-04-30 17:50:23 - ConnectionPool.initializePool() - Connection pool initialized successfully with 5 connections
+[FINE] 2026-04-30 17:50:23 - ConnectionPool.getConnection() - Connection retrieved from pool. Active: 1, Idle: 4
+[INFO] 2026-04-30 17:50:23 - LogUtil.logBusiness() - [Business] GET_FOLLOWER_USER_IDS - User 1 has 0 followers
+[FINE] 2026-04-30 17:50:23 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 0, Idle: 5
+[FINE] 2026-04-30 17:50:23 - ConnectionPool.getConnection() - Connection retrieved from pool. Active: 1, Idle: 4
+[INFO] 2026-04-30 17:50:23 - LogUtil.logBusiness() - [Business] GET_FOLLOWER_USER_IDS - User 1 has 0 followers
+[FINE] 2026-04-30 17:50:23 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 0, Idle: 5
+[FINE] 2026-04-30 17:50:24 - ConnectionPool.getConnection() - Connection retrieved from pool. Active: 1, Idle: 4
+[INFO] 2026-04-30 17:50:24 - LogUtil.logBusiness() - [Business] GET_FOLLOWING_USER_IDS - User 2 follows 0 users
+[FINE] 2026-04-30 17:50:24 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 0, Idle: 5
+[INFO] 2026-04-30 20:19:33 - BaseDaoImpl.<init>() - BaseDaoImpl initialized for entity: VideoInfo, table: video_info, primary key: id
+[INFO] 2026-04-30 20:19:33 - BaseDaoImpl.<init>() - BaseDaoImpl initialized for entity: User, table: sys_user, primary key: id
+[INFO] 2026-04-30 20:19:34 - ConnectionPool.initializePool() - Initializing connection pool: coreSize=5, maxSize=10, timeout=3000ms
+[FINE] 2026-04-30 20:19:34 - ConnectionPool.createNewConnection() - Created new database connection: 1632413663
+[FINE] 2026-04-30 20:19:34 - ConnectionPool.initializePool() - Created initial connection #1
+[FINE] 2026-04-30 20:19:34 - ConnectionPool.createNewConnection() - Created new database connection: 1725165248
+[FINE] 2026-04-30 20:19:34 - ConnectionPool.initializePool() - Created initial connection #2
+[FINE] 2026-04-30 20:19:34 - ConnectionPool.createNewConnection() - Created new database connection: 452121674
+[FINE] 2026-04-30 20:19:34 - ConnectionPool.initializePool() - Created initial connection #3
+[FINE] 2026-04-30 20:19:34 - ConnectionPool.createNewConnection() - Created new database connection: 1636050357
+[FINE] 2026-04-30 20:19:34 - ConnectionPool.initializePool() - Created initial connection #4
+[FINE] 2026-04-30 20:19:34 - ConnectionPool.createNewConnection() - Created new database connection: 1412794598
+[FINE] 2026-04-30 20:19:34 - ConnectionPool.initializePool() - Created initial connection #5
+[INFO] 2026-04-30 20:19:34 - ConnectionPool.initializePool() - Connection pool initialized successfully with 5 connections
+[FINE] 2026-04-30 20:19:34 - ConnectionPool.getConnection() - Connection retrieved from pool. Active: 1, Idle: 4
+[INFO] 2026-04-30 20:19:34 - LogUtil.logBusiness() - [Business] GET_FOLLOWER_USER_IDS - User 9 has 2 followers
+[FINE] 2026-04-30 20:19:34 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 0, Idle: 5
+[FINE] 2026-04-30 20:19:36 - ConnectionPool.getConnection() - Connection retrieved from pool. Active: 1, Idle: 4
+[INFO] 2026-04-30 20:19:36 - LogUtil.logBusiness() - [Business] GET_FOLLOWER_USER_IDS - User 9 has 2 followers
+[FINE] 2026-04-30 20:19:36 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 0, Idle: 5
+[FINE] 2026-04-30 20:19:38 - ConnectionPool.getConnection() - Connection retrieved from pool. Active: 1, Idle: 4
+[FINE] 2026-04-30 20:19:38 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 0, Idle: 5
+[INFO] 2026-04-30 20:21:40 - BaseDaoImpl.<init>() - BaseDaoImpl initialized for entity: VideoInfo, table: video_info, primary key: id
+[INFO] 2026-04-30 20:21:40 - BaseDaoImpl.<init>() - BaseDaoImpl initialized for entity: User, table: sys_user, primary key: id
+[INFO] 2026-04-30 20:21:40 - ConnectionPool.initializePool() - Initializing connection pool: coreSize=5, maxSize=10, timeout=3000ms
+[FINE] 2026-04-30 20:21:41 - ConnectionPool.createNewConnection() - Created new database connection: 416841088
+[FINE] 2026-04-30 20:21:41 - ConnectionPool.initializePool() - Created initial connection #1
+[FINE] 2026-04-30 20:21:41 - ConnectionPool.createNewConnection() - Created new database connection: 1483298597
+[FINE] 2026-04-30 20:21:41 - ConnectionPool.initializePool() - Created initial connection #2
+[FINE] 2026-04-30 20:21:41 - ConnectionPool.createNewConnection() - Created new database connection: 257608605
+[FINE] 2026-04-30 20:21:41 - ConnectionPool.initializePool() - Created initial connection #3
+[FINE] 2026-04-30 20:21:41 - ConnectionPool.createNewConnection() - Created new database connection: 1567705314
+[FINE] 2026-04-30 20:21:41 - ConnectionPool.initializePool() - Created initial connection #4
+[FINE] 2026-04-30 20:21:41 - ConnectionPool.createNewConnection() - Created new database connection: 2082781203
+[FINE] 2026-04-30 20:21:41 - ConnectionPool.initializePool() - Created initial connection #5
+[INFO] 2026-04-30 20:21:41 - ConnectionPool.initializePool() - Connection pool initialized successfully with 5 connections
+[FINE] 2026-04-30 20:21:41 - ConnectionPool.getConnection() - Connection retrieved from pool. Active: 1, Idle: 4
+[INFO] 2026-04-30 20:21:41 - LogUtil.logBusiness() - [Business] GET_FOLLOWER_USER_IDS - User 9 has 2 followers
+[FINE] 2026-04-30 20:21:41 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 0, Idle: 5
+[FINE] 2026-04-30 20:21:43 - ConnectionPool.getConnection() - Connection retrieved from pool. Active: 1, Idle: 4
+[INFO] 2026-04-30 20:21:43 - LogUtil.logBusiness() - [Business] GET_FOLLOWER_USER_IDS - User 9 has 2 followers
+[FINE] 2026-04-30 20:21:43 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 0, Idle: 5
+[FINE] 2026-04-30 20:21:45 - ConnectionPool.getConnection() - Connection retrieved from pool. Active: 1, Idle: 4
+[FINE] 2026-04-30 20:21:45 - ConnectionPool.returnConnection() - Connection returned to pool. Active: 0, Idle: 5

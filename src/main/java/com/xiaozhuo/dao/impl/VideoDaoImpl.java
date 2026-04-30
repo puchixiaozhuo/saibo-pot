@@ -12,6 +12,7 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -352,6 +353,50 @@ public class VideoDaoImpl extends BaseDaoImpl<VideoInfo> implements VideoDao {
         }
     }
 
+
+    @Override
+    public int incrementFavoriteCount(Long id) {
+        Connection conn = null;
+        try {
+            conn = ConnectionPool.getConnection();
+            VideoInfo video = findById(conn, id);
+            if (video != null) {
+                Long currentCount = video.getFavoriteCount() != null ? video.getFavoriteCount() : 0L;
+                video.setFavoriteCount(currentCount + 1);
+                return update(conn, video);
+            }
+            return 0;
+        } catch (Exception e) {
+            LogUtil.logError(logger, "增加收藏数失败: id=" + id, e);
+            throw new DatabaseException("增加收藏数失败", e);
+        } finally {
+            if (conn != null) {
+                ConnectionPool.returnConnection(conn);
+            }
+        }
+    }
+
+    @Override
+    public int decrementFavoriteCount(Long id) {
+        Connection conn = null;
+        try {
+            conn = ConnectionPool.getConnection();
+            VideoInfo video = findById(conn, id);
+            if (video != null && video.getFavoriteCount() != null && video.getFavoriteCount() > 0) {
+                video.setFavoriteCount(video.getFavoriteCount() - 1);
+                return update(conn, video);
+            }
+            return 0;
+        } catch (Exception e) {
+            LogUtil.logError(logger, "减少收藏数失败: id=" + id, e);
+            throw new DatabaseException("减少收藏数失败", e);
+        } finally {
+            if (conn != null) {
+                ConnectionPool.returnConnection(conn);
+            }
+        }
+    }
+
     @Override
     public Long getAuthorIdById(java.sql.Connection conn, Long videoId) {
         try {
@@ -362,6 +407,196 @@ public class VideoDaoImpl extends BaseDaoImpl<VideoInfo> implements VideoDao {
             throw new DatabaseException("获取作者ID失败", e);
         }
     }
+
+
+    @Override
+    public List<VideoInfo> selectVideosByAuthorIds(List<Long> authorIds, int pageNum, int pageSize) {
+        Connection conn = null;
+        try {
+            conn = ConnectionPool.getConnection();
+
+            if (authorIds == null || authorIds.isEmpty()) {
+                return new ArrayList<>();
+            }
+
+            String placeholders = String.join(",", authorIds.stream().map(id -> "?").toArray(String[]::new));
+            String sql = "SELECT * FROM video_info WHERE author_id IN (" + placeholders + ") AND is_delete = 0 ORDER BY create_time DESC LIMIT ? OFFSET ?";
+
+            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                for (int i = 0; i < authorIds.size(); i++) {
+                    pstmt.setLong(i + 1, authorIds.get(i));
+                }
+                pstmt.setInt(authorIds.size() + 1, pageSize);
+                pstmt.setInt(authorIds.size() + 2, (pageNum - 1) * pageSize);
+
+                try (ResultSet rs = pstmt.executeQuery()) {
+                    return mapResultSetToList(rs);
+                }
+            }
+        } catch (SQLException e) {
+            LogUtil.logError(logger, "根据作者ID列表查询视频失败", e);
+            throw new DatabaseException("根据作者ID列表查询视频失败", e);
+        } finally {
+            if (conn != null) {
+                ConnectionPool.returnConnection(conn);
+            }
+        }
+    }
+
+    @Override
+    public long countVideosByAuthorIds(List<Long> authorIds) {
+        Connection conn = null;
+        try {
+            conn = ConnectionPool.getConnection();
+
+            if (authorIds == null || authorIds.isEmpty()) {
+                return 0;
+            }
+
+            String placeholders = String.join(",", authorIds.stream().map(id -> "?").toArray(String[]::new));
+            String sql = "SELECT COUNT(*) FROM video_info WHERE author_id IN (" + placeholders + ") AND is_delete = 0";
+
+            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                for (int i = 0; i < authorIds.size(); i++) {
+                    pstmt.setLong(i + 1, authorIds.get(i));
+                }
+
+                try (ResultSet rs = pstmt.executeQuery()) {
+                    if (rs.next()) {
+                        return rs.getLong(1);
+                    }
+                    return 0;
+                }
+            }
+        } catch (SQLException e) {
+            LogUtil.logError(logger, "统计作者视频数量失败", e);
+            throw new DatabaseException("统计作者视频数量失败", e);
+        } finally {
+            if (conn != null) {
+                ConnectionPool.returnConnection(conn);
+            }
+        }
+    }
+
+    @Override
+    public List<VideoInfo> selectVideosByAuthorIdsWithCursor(List<Long> authorIds, String cursor, int pageSize) {
+        Connection conn = null;
+        try {
+            conn = ConnectionPool.getConnection();
+
+            if (authorIds == null || authorIds.isEmpty()) {
+                return new ArrayList<>();
+            }
+
+            String placeholders = String.join(",", authorIds.stream().map(id -> "?").toArray(String[]::new));
+            String sql;
+
+            if (cursor == null || cursor.isEmpty()) {
+                sql = "SELECT * FROM video_info WHERE author_id IN (" + placeholders + ") AND is_delete = 0 ORDER BY create_time DESC LIMIT ?";
+            } else {
+                sql = "SELECT * FROM video_info WHERE author_id IN (" + placeholders + ") AND is_delete = 0 AND id < ? ORDER BY create_time DESC LIMIT ?";
+            }
+
+            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                for (int i = 0; i < authorIds.size(); i++) {
+                    pstmt.setLong(i + 1, authorIds.get(i));
+                }
+
+                if (cursor != null && !cursor.isEmpty()) {
+                    pstmt.setLong(authorIds.size() + 1, Long.parseLong(cursor));
+                    pstmt.setInt(authorIds.size() + 2, pageSize);
+                } else {
+                    pstmt.setInt(authorIds.size() + 1, pageSize);
+                }
+
+                try (ResultSet rs = pstmt.executeQuery()) {
+                    return mapResultSetToList(rs);
+                }
+            }
+        } catch (SQLException e) {
+            LogUtil.logError(logger, "基于游标查询视频失败", e);
+            throw new DatabaseException("基于游标查询视频失败", e);
+        } finally {
+            if (conn != null) {
+                ConnectionPool.returnConnection(conn);
+            }
+        }
+    }
+
+    @Override
+    public long countUnreadVideos(List<Long> authorIds, java.time.LocalDateTime lastReadTime) {
+        Connection conn = null;
+        try {
+            conn = ConnectionPool.getConnection();
+
+            if (authorIds == null || authorIds.isEmpty() || lastReadTime == null) {
+                return 0;
+            }
+
+            String placeholders = String.join(",", authorIds.stream().map(id -> "?").toArray(String[]::new));
+            String sql = "SELECT COUNT(*) FROM video_info WHERE author_id IN (" + placeholders + ") AND is_delete = 0 AND create_time > ?";
+
+            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                for (int i = 0; i < authorIds.size(); i++) {
+                    pstmt.setLong(i + 1, authorIds.get(i));
+                }
+                pstmt.setTimestamp(authorIds.size() + 1, java.sql.Timestamp.valueOf(lastReadTime));
+
+                try (ResultSet rs = pstmt.executeQuery()) {
+                    if (rs.next()) {
+                        return rs.getLong(1);
+                    }
+                    return 0;
+                }
+            }
+        } catch (SQLException e) {
+            LogUtil.logError(logger, "统计未读视频数量失败", e);
+            throw new DatabaseException("统计未读视频数量失败", e);
+        } finally {
+            if (conn != null) {
+                ConnectionPool.returnConnection(conn);
+            }
+        }
+    }
+
+
+    @Override
+    public List<VideoInfo> selectVideosByIds(List<Long> videoIds) {
+        Connection conn = null;
+        try {
+            conn = ConnectionPool.getConnection();
+
+            if (videoIds == null || videoIds.isEmpty()) {
+                return new ArrayList<>();
+            }
+
+            StringBuilder sql = new StringBuilder("SELECT * FROM video_info WHERE id IN (");
+            for (int i = 0; i < videoIds.size(); i++) {
+                if (i > 0) sql.append(",");
+                sql.append("?");
+            }
+            sql.append(") AND is_delete = 0 ORDER BY create_time DESC");
+
+            try (PreparedStatement pstmt = conn.prepareStatement(sql.toString())) {
+                for (int i = 0; i < videoIds.size(); i++) {
+                    pstmt.setLong(i + 1, videoIds.get(i));
+                }
+
+                try (ResultSet rs = pstmt.executeQuery()) {
+                    return mapResultSetToList(rs);
+                }
+            }
+        } catch (SQLException e) {
+            LogUtil.logError(logger, "根据ID列表查询视频失败", e);
+            throw new DatabaseException("根据ID列表查询视频失败", e);
+        } finally {
+            if (conn != null) {
+                ConnectionPool.returnConnection(conn);
+            }
+        }
+    }
+
+
 
     /**
      * 将 ResultSet 映射为实体列表
@@ -377,6 +612,7 @@ public class VideoDaoImpl extends BaseDaoImpl<VideoInfo> implements VideoDao {
         }
         return list;
     }
+
 
     /**
      * 将 ResultSet 映射为单个实体

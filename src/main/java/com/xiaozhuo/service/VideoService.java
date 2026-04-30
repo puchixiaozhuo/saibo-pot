@@ -84,11 +84,51 @@ public interface VideoService {
     Result<Void> unlikeVideo(Long userId, Long videoId);
 
     /**
+     * 收藏视频
+     * @param userId 用户ID
+     * @param videoId 视频ID
+     * @return 收藏结果
+     */
+    Result<Void> favoriteVideo(Long userId, Long videoId);
+
+    /**
+     * 取消收藏视频
+     * @param userId 用户ID
+     * @param videoId 视频ID
+     * @return 取消收藏结果
+     */
+    Result<Void> unfavoriteVideo(Long userId, Long videoId);
+
+    /**
+     * 获取用户收藏列表
+     * @param userId 用户ID
+     * @param pageNum 页码
+     * @param pageSize 每页大小
+     * @return 收藏视频列表
+     */
+    Result<List<VideoInfo>> getUserFavorites(Long userId, int pageNum, int pageSize);
+
+
+    /**
      * 将视频缓存到本地
      * @param videoId 视频ID
      * @return 缓存结果
      */
     Result<Map<String, Object>> cacheVideoToLocal(Long videoId);
+
+    /**
+     * 获取视频缓存状态
+     * @param videoId 视频ID
+     * @return 缓存状态信息
+     */
+    Result<Map<String, Object>> getCacheStatus(Long videoId);
+
+    /**
+     * 清理视频缓存
+     * @param videoId 视频ID
+     * @return 清理结果
+     */
+    Result<Void> clearCache(Long videoId);
 
     /**
      * 获取视频下载地址

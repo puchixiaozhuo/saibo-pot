@@ -37,4 +37,7 @@ public class User {
 
     @Column("update_time")
     private LocalDateTime updateTime;
+
+    @Column("last_feed_read_time")
+    private LocalDateTime lastFeedReadTime;
 }

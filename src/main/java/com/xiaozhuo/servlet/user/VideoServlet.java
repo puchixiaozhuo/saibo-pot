@@ -7,6 +7,7 @@ import com.xiaozhuo.exception.BusinessException;
 import com.xiaozhuo.handler.GlobalExceptionHandler;
 import com.xiaozhuo.ioc.ApplicationContext;
 import com.xiaozhuo.result.Result;
+import com.xiaozhuo.service.Impl.VideoServiceImpl;
 import com.xiaozhuo.service.VideoService;
 import org.apache.commons.fileupload.FileItem;
 import org.apache.commons.fileupload.disk.DiskFileItemFactory;
@@ -42,6 +43,7 @@ public class VideoServlet extends HttpServlet {
         }
     }
 
+
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
         resp.setContentType("application/json;charset=UTF-8");
@@ -65,6 +67,11 @@ public class VideoServlet extends HttpServlet {
                 handleSearchVideos(req, resp);
             } else if (pathInfo.startsWith("/download/")) {
                 handleGetDownloadUrl(req, pathInfo, resp);
+            } else if (pathInfo.matches("/\\d+/cache-status")) {
+                Long id = Long.parseLong(pathInfo.substring(1, pathInfo.indexOf("/cache-status")));
+                handleGetCacheStatus(id, resp);
+            } else if (pathInfo.startsWith("/favorites")) {
+                handleGetUserFavorites(req, resp);
             } else {
                 throw new BusinessException(404, "接口不存在");
             }
@@ -72,6 +79,7 @@ public class VideoServlet extends HttpServlet {
             GlobalExceptionHandler.handleException(resp, e, req.getRequestURI());
         }
     }
+
 
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
@@ -91,6 +99,12 @@ public class VideoServlet extends HttpServlet {
             } else if (pathInfo.matches("/\\d+/unlike")) {
                 Long id = Long.parseLong(pathInfo.substring(1, pathInfo.indexOf("/unlike")));
                 handleUnlikeVideo(req, id, resp);
+            } else if (pathInfo.matches("/\\d+/favorite")) {
+                Long id = Long.parseLong(pathInfo.substring(1, pathInfo.indexOf("/favorite")));
+                handleFavoriteVideo(req, id, resp);
+            } else if (pathInfo.matches("/\\d+/unfavorite")) {
+                Long id = Long.parseLong(pathInfo.substring(1, pathInfo.indexOf("/unfavorite")));
+                handleUnfavoriteVideo(req, id, resp);
             } else if (pathInfo.matches("/\\d+/cache")) {
                 Long id = Long.parseLong(pathInfo.substring(1, pathInfo.indexOf("/cache")));
                 handleCacheVideo(id, resp);
@@ -101,6 +115,8 @@ public class VideoServlet extends HttpServlet {
             GlobalExceptionHandler.handleException(resp, e, req.getRequestURI());
         }
     }
+
+
 
     @Override
     protected void doDelete(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
@@ -116,6 +132,9 @@ public class VideoServlet extends HttpServlet {
             if (pathInfo != null && pathInfo.matches("/\\d+")) {
                 Long id = Long.parseLong(pathInfo.substring(1));
                 handleDeleteVideo(userId, id, resp);
+            } else if (pathInfo != null && pathInfo.matches("/\\d+/cache")) {
+                Long id = Long.parseLong(pathInfo.substring(1, pathInfo.indexOf("/cache")));
+                handleClearCache(id, resp);
             } else {
                 throw new BusinessException(400, "请求路径错误");
             }
@@ -123,6 +142,7 @@ public class VideoServlet extends HttpServlet {
             GlobalExceptionHandler.handleException(resp, e, req.getRequestURI());
         }
     }
+
 
     private void handleGetVideoById(Long id, HttpServletResponse resp) throws IOException {
         Result<VideoInfo> result = videoService.getVideoById(id);
@@ -253,8 +273,48 @@ public class VideoServlet extends HttpServlet {
         resp.getWriter().write(JSON.toJSONString(result));
     }
 
+    private void handleFavoriteVideo(HttpServletRequest req, Long videoId, HttpServletResponse resp) throws IOException {
+        Long userId = (Long) req.getAttribute("userId");
+        if (userId == null) {
+            throw new BusinessException(401, "未登录，请先登录");
+        }
+        Result<Void> result = videoService.favoriteVideo(userId, videoId);
+        resp.getWriter().write(JSON.toJSONString(result));
+    }
+
+    private void handleUnfavoriteVideo(HttpServletRequest req, Long videoId, HttpServletResponse resp) throws IOException {
+        Long userId = (Long) req.getAttribute("userId");
+        if (userId == null) {
+            throw new BusinessException(401, "未登录，请先登录");
+        }
+        Result<Void> result = videoService.unfavoriteVideo(userId, videoId);
+        resp.getWriter().write(JSON.toJSONString(result));
+    }
+
+    private void handleGetUserFavorites(HttpServletRequest req, HttpServletResponse resp) throws IOException {
+        Long userId = (Long) req.getAttribute("userId");
+        if (userId == null) {
+            throw new BusinessException(401, "未登录，请先登录");
+        }
+        int pageNum = getIntParameter(req, "pageNum", 1);
+        int pageSize = getIntParameter(req, "pageSize", 10);
+        Result<List<VideoInfo>> result = videoService.getUserFavorites(userId, pageNum, pageSize);
+        resp.getWriter().write(JSON.toJSONString(result));
+    }
+
+
     private void handleCacheVideo(Long videoId, HttpServletResponse resp) throws IOException {
         Result<Map<String, Object>> result = videoService.cacheVideoToLocal(videoId);
+        resp.getWriter().write(JSON.toJSONString(result));
+    }
+
+    private void handleGetCacheStatus(Long videoId, HttpServletResponse resp) throws IOException {
+        Result<Map<String, Object>> result = ((VideoServiceImpl) videoService).getCacheStatus(videoId);
+        resp.getWriter().write(JSON.toJSONString(result));
+    }
+
+    private void handleClearCache(Long videoId, HttpServletResponse resp) throws IOException {
+        Result<Void> result = ((VideoServiceImpl) videoService).clearCache(videoId);
         resp.getWriter().write(JSON.toJSONString(result));
     }
 

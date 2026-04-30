@@ -41,4 +41,11 @@ public interface UserDao {
      * @param lastLoginTime 上次登录时间
      */
     void updateLoginTime(Connection conn, Long userId, LocalDateTime lastLoginTime);
+
+    /**
+     * 更新用户最后读取Feed时间
+     * @param conn 数据库连接
+     * @param userId 用户ID
+     */
+    void updateLastFeedReadTime(Connection conn, Long userId);
 }

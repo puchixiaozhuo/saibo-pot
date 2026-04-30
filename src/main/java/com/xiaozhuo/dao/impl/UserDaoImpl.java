@@ -82,5 +82,24 @@ public class UserDaoImpl extends BaseDaoImpl<User> implements UserDao {
             throw new DatabaseException("更新用户登录时间失败", e);
         }
     }
+
+    /**
+     * 更新用户最后读取Feed时间
+     */
+    @Override
+    public void updateLastFeedReadTime(Connection conn, Long userId) {
+        String sql = "UPDATE sys_user SET last_feed_read_time = NOW() WHERE id = ?";
+
+        try (java.sql.PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setLong(1, userId);
+            int rows = pstmt.executeUpdate();
+
+            LogUtil.logBusiness(logger, "UPDATE_FEED_READ_TIME",
+                    "User " + userId + " feed read time updated, affected " + rows + " row(s)");
+        } catch (Exception e) {
+            LogUtil.logError(logger, "更新用户Feed读取时间失败: userId=" + userId, e);
+            throw new DatabaseException("更新用户Feed读取时间失败", e);
+        }
+    }
 }
 

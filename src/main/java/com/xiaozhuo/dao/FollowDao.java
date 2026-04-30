@@ -20,4 +20,20 @@ public interface FollowDao {
     int countFollower(Connection conn, Long followId);
 
     boolean isFollowing(Connection conn, Long userId, Long followId);
+
+    /**
+     * 获取用户关注的所有用户ID列表
+     * @param conn 数据库连接
+     * @param userId 用户ID
+     * @return 关注的用户ID列表
+     */
+    List<Long> getFollowingUserIds(Connection conn, Long userId);
+
+    /**
+     * 获取用户的所有粉丝ID列表
+     * @param conn 数据库连接
+     * @param userId 用户ID（博主）
+     * @return 粉丝ID列表
+     */
+    List<Long> getFollowerUserIds(Connection conn, Long userId);
 }

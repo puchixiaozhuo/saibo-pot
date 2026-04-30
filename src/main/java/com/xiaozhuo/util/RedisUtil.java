@@ -139,6 +139,43 @@ public class RedisUtil {
     }
 
     /**
+     * 自增操作
+     * @param key 键
+     * @return 自增后的值
+     */
+    public static Long incr(String key) {
+        Jedis jedis = null;
+        try {
+            jedis = getJedis();
+            return jedis.incr(key);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return 0L;
+        } finally {
+            close(jedis);
+        }
+    }
+
+    /**
+     * 自减操作
+     * @param key 键
+     * @return 自减后的值
+     */
+    public static Long decr(String key) {
+        Jedis jedis = null;
+        try {
+            jedis = getJedis();
+            return jedis.decr(key);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return 0L;
+        } finally {
+            close(jedis);
+        }
+    }
+
+
+    /**
      * 根据模式查询键列表
      * @param pattern 匹配模式，如 "comment:video:*"
      * @return 匹配的键集合
@@ -151,6 +188,86 @@ public class RedisUtil {
         } catch (Exception e) {
             e.printStackTrace();
             return java.util.Collections.emptySet();
+        } finally {
+            close(jedis);
+        }
+    }
+
+    /**
+     * ZSet: 添加元素
+     * @param key 键
+     * @param score 分数（排序依据）
+     * @param member 成员
+     * @return 是否添加成功
+     */
+    public static Boolean zadd(String key, double score, String member) {
+        Jedis jedis = null;
+        try {
+            jedis = getJedis();
+            return jedis.zadd(key, score, member) > 0;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        } finally {
+            close(jedis);
+        }
+    }
+
+    /**
+     * ZSet: 倒序获取指定范围的元素
+     * @param key 键
+     * @param start 起始索引
+     * @param end 结束索引
+     * @return 元素集合
+     */
+    public static java.util.List<String> zrevrange(String key, long start, long end) {
+        Jedis jedis = null;
+        try {
+            jedis = getJedis();
+            return jedis.zrevrange(key, start, end);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return java.util.Collections.emptyList();
+        } finally {
+            close(jedis);
+        }
+    }
+
+    /**
+     * ZSet: 统计指定分数范围内的元素数量
+     * @param key 键
+     * @param min 最小分数
+     * @param max 最大分数
+     * @return 元素数量
+     */
+    public static Long zcount(String key, double min, double max) {
+        Jedis jedis = null;
+        try {
+            jedis = getJedis();
+            return jedis.zcount(key, min, max);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return 0L;
+        } finally {
+            close(jedis);
+        }
+    }
+
+    /**
+     * ZSet: 删除指定排名范围的元素
+     * @param key 键
+     * @param start 起始排名
+     * @param end 结束排名
+     * @return 删除的元素数量
+     */
+    public static Long zremrangeByRank(String key, long start, long end) {
+        Jedis jedis = null;
+        try {
+            jedis = getJedis();
+            return jedis.zremrangeByRank(key, start, end);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return 0L;
         } finally {
             close(jedis);
         }

@@ -155,6 +155,56 @@ public class FollowDaoImpl implements FollowDao {
     }
 
     /**
+     * 获取用户关注的所有用户ID列表
+     */
+    @Override
+    public List<Long> getFollowingUserIds(Connection conn, Long userId) {
+        String sql = "SELECT follow_id FROM user_follow WHERE user_id = ?";
+        List<Long> followIds = new ArrayList<>();
+
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, userId);
+            ResultSet rs = ps.executeQuery();
+
+            while (rs.next()) {
+                followIds.add(rs.getLong("follow_id"));
+            }
+
+            LogUtil.logBusiness(logger, "GET_FOLLOWING_USER_IDS",
+                    "User " + userId + " follows " + followIds.size() + " users");
+        } catch (SQLException e) {
+            LogUtil.logError(logger, "获取关注用户ID列表失败: userId=" + userId, e);
+            throw new DatabaseException("获取关注用户ID列表失败", e);
+        }
+
+        return followIds;
+    }
+
+    @Override
+    public List<Long> getFollowerUserIds(Connection conn, Long userId) {
+        String sql = "SELECT user_id FROM user_follow WHERE follow_id = ?";
+        List<Long> followerIds = new ArrayList<>();
+
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, userId);
+            ResultSet rs = ps.executeQuery();
+
+            while (rs.next()) {
+                followerIds.add(rs.getLong("user_id"));
+            }
+
+            LogUtil.logBusiness(logger, "GET_FOLLOWER_USER_IDS",
+                    "User " + userId + " has " + followerIds.size() + " followers");
+        } catch (SQLException e) {
+            LogUtil.logError(logger, "获取粉丝ID列表失败: userId=" + userId, e);
+            throw new DatabaseException("获取粉丝ID列表失败", e);
+        }
+
+        return followerIds;
+    }
+
+
+    /**
      * 将 ResultSet 映射为 UserFollow 对象
      */
     private UserFollow mapRow(ResultSet rs) throws SQLException {
