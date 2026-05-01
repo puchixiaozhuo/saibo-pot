@@ -44,7 +44,7 @@ public interface FeedService {
      * @param pageSize 每页大小
      * @return 视频列表
      */
-    Result<List<VideoInfo>> pullPushFeed(Long userId, int pageNum, int pageSize);
+    Result<Object> pullPushFeed(Long userId, int pageNum, int pageSize);
 
     /**
      * 获取未读Feed数量（Push模式 - 从Redis读取）

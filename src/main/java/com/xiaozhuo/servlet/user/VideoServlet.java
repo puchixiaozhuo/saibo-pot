@@ -9,6 +9,7 @@ import com.xiaozhuo.ioc.ApplicationContext;
 import com.xiaozhuo.result.Result;
 import com.xiaozhuo.service.Impl.VideoServiceImpl;
 import com.xiaozhuo.service.VideoService;
+import com.xiaozhuo.util.TokenUtil;
 import org.apache.commons.fileupload.FileItem;
 import org.apache.commons.fileupload.disk.DiskFileItemFactory;
 import org.apache.commons.fileupload.servlet.ServletFileUpload;
@@ -58,7 +59,7 @@ public class VideoServlet extends HttpServlet {
                 handleGetVideoList(req, resp);
             } else if (pathInfo.matches("/\\d+")) {
                 Long id = Long.parseLong(pathInfo.substring(1));
-                handleGetVideoById(id, resp);
+                handleGetVideoById(req, id, resp);
             } else if (pathInfo.startsWith("/author/")) {
                 handleGetVideosByAuthor(req, pathInfo, resp);
             } else if (pathInfo.startsWith("/category/")) {
@@ -144,9 +145,30 @@ public class VideoServlet extends HttpServlet {
     }
 
 
-    private void handleGetVideoById(Long id, HttpServletResponse resp) throws IOException {
-        Result<VideoInfo> result = videoService.getVideoById(id);
-        resp.getWriter().write(JSON.toJSONString(result));
+    // 🔥 修改方法签名，增加 HttpServletRequest 参数
+    private void handleGetVideoById(HttpServletRequest req, Long videoId, HttpServletResponse resp) throws IOException {
+        try {
+            // 🔥 正式获取当前登录用户 ID
+            // 1. 从请求头获取 Token
+            String token = req.getHeader("Authorization");
+            if (token != null && token.startsWith("Bearer ")) {
+                token = token.substring(7);
+            }
+
+            Long userId = null;
+            if (token != null && !token.isEmpty()) {
+                // 2. 解析 Token 获取 userId
+                userId = TokenUtil.parseUserId(token);
+            }
+
+            // 3. 调用 Service 层，传入 userId 进行防刷判断
+            Result<VideoInfo> result = videoService.getVideoById(videoId, userId);
+            resp.getWriter().write(JSON.toJSONString(result));
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            resp.getWriter().write(JSON.toJSONString(Result.error()));
+        }
     }
 
     private void handleGetVideoList(HttpServletRequest req, HttpServletResponse resp) throws IOException {

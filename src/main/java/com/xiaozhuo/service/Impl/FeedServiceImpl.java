@@ -16,6 +16,7 @@ import com.xiaozhuo.util.ConnectionPool;
 import com.xiaozhuo.util.RedisUtil;
 
 import java.sql.Connection;
+import java.time.LocalDateTime;
 import java.util.*;
 
 /**
@@ -183,9 +184,31 @@ public class FeedServiceImpl implements FeedService {
         }
     }
 
+    /**
+     * 计算视频的热度分数（牛顿冷却定律）
+     */
+    private double calculateHotnessScore(VideoInfo video) {
+        long now = System.currentTimeMillis();
+        long createTime = video.getCreateTime().atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli();
+
+        // T: 距离现在的小时数
+        double hoursPassed = (now - createTime) / (1000.0 * 3600);
+
+        // P: 互动得分 (播放*1 + 点赞*5 + 评论*10)
+        double points = (video.getViewCount() != null ? video.getViewCount() : 0) * 1.0
+                + (video.getLikeCount() != null ? video.getLikeCount() : 0) * 5.0
+                + (video.getCommentCount() != null ? video.getCommentCount() : 0) * 10.0;
+
+        // G: 重力因子，越大衰减越快
+        double gravity = 1.8;
+
+        // 避免分母为 0
+        return points / Math.pow(hoursPassed + 2, gravity);
+    }
+
 
     @Override
-    public Result<List<VideoInfo>> pullPushFeed(Long userId, int pageNum, int pageSize) {
+    public Result<Object> pullPushFeed(Long userId, int pageNum, int pageSize) {
         try {
             if (userId == null) {
                 return Result.fail(400, "用户ID不能为空");
@@ -202,7 +225,12 @@ public class FeedServiceImpl implements FeedService {
             List<String> videoIds = RedisUtil.zrevrange(feedKey, start, end);
 
             if (videoIds == null || videoIds.isEmpty()) {
-                return Result.success("暂无Feed数据", new ArrayList<>());
+                Map<String, Object> emptyData = new HashMap<>();
+                emptyData.put("videos", new ArrayList<>());
+                emptyData.put("serverTime", LocalDateTime.now().toString());
+                // 🔥 修复：通过中间变量进行泛型转换
+                Result<Object> result = Result.success("暂无Feed数据", (Object) emptyData);
+                return result;
             }
 
             List<Long> videoIdList = new ArrayList<>();
@@ -212,18 +240,28 @@ public class FeedServiceImpl implements FeedService {
 
             List<VideoInfo> videos = videoDao.selectVideosByIds(videoIdList);
 
-            Map<String, Object> pageInfo = new HashMap<>();
-            pageInfo.put("videos", videos);
-            pageInfo.put("pageNum", pageNum);
-            pageInfo.put("pageSize", pageSize);
+            // 🔥 高级货：根据热度重新排序
+            if (videos != null && !videos.isEmpty()) {
+                videos.sort((v1, v2) -> Double.compare(calculateHotnessScore(v2), calculateHotnessScore(v1)));
+            }
 
-            return Result.success("查询成功", videos);
+            Map<String, Object> data = new HashMap<>();
+            data.put("videos", videos);
+            data.put("pageNum", pageNum);
+            data.put("pageSize", pageSize);
+            data.put("serverTime", LocalDateTime.now().toString());
+
+            // 🔥 修复：通过中间变量进行泛型转换
+            Result<Object> result = Result.success("Query successful", (Object) data);
+            return result;
 
         } catch (Exception e) {
             e.printStackTrace();
             return Result.error();
         }
     }
+
+
 
     @Override
     public Result<Long> getUnreadFeedCount(Long userId, java.time.LocalDateTime lastReadTime) {

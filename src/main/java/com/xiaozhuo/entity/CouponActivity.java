@@ -43,4 +43,7 @@ public class CouponActivity {
 
     @Column("update_time")
     private LocalDateTime updateTime;
+
+    @Column("required-watch-seconds")
+    private Integer requiredWatchSeconds;
 }

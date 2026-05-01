@@ -194,6 +194,25 @@ public class RedisUtil {
     }
 
     /**
+     * 设置键值对（仅当键不存在时）
+     * @param key 键
+     * @param value 值
+     * @return true-设置成功, false-键已存在
+     */
+    public static Boolean setnx(String key, String value) {
+        Jedis jedis = null;
+        try {
+            jedis = getJedis();
+            return jedis.setnx(key, value) == 1;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        } finally {
+            close(jedis);
+        }
+    }
+
+    /**
      * ZSet: 添加元素
      * @param key 键
      * @param score 分数（排序依据）

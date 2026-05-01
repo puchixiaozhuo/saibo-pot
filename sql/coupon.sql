@@ -44,3 +44,23 @@ INSERT INTO `coupon_activity`
 (`video_id`, `title`, `description`, `total_stock`, `remaining_stock`, `start_time`, `end_time`, `status`, `version`)
 VALUES
 (1, '限时优惠券', '满100减20元优惠券', 100, 100, '2026-04-30 20:00:00', '2026-04-30 22:00:00', 1, 0);
+
+-- 添加观看时长要求字段
+ALTER TABLE coupon_activity
+    ADD COLUMN required_watch_seconds INT DEFAULT 0 COMMENT '需要观看的时长（秒），0表示无需观看';
+
+-- 添加观看记录表
+CREATE TABLE IF NOT EXISTS `user_video_watch_record` (
+                                                         `id` BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '主键ID',
+                                                         `user_id` BIGINT NOT NULL COMMENT '用户ID',
+                                                         `video_id` BIGINT NOT NULL COMMENT '视频ID',
+                                                         `activity_id` BIGINT NOT NULL COMMENT '关联的活动ID',
+                                                         `watched_seconds` INT NOT NULL DEFAULT 0 COMMENT '已观看时长（秒）',
+                                                         `is_unlocked` TINYINT NOT NULL DEFAULT 0 COMMENT '是否已解锁：0-未解锁，1-已解锁',
+                                                         `unlock_time` DATETIME COMMENT '解锁时间',
+                                                         `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+                                                         `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+                                                         UNIQUE KEY `uk_user_video_activity` (`user_id`, `video_id`, `activity_id`),
+    KEY `idx_user_id` (`user_id`),
+    KEY `idx_activity_id` (`activity_id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户视频观看记录表';

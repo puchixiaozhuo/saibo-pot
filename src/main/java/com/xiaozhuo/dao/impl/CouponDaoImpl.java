@@ -1,8 +1,8 @@
 package com.xiaozhuo.dao.impl;
 
 import com.xiaozhuo.dao.CouponDao;
-import com.xiaozhuo.entity.CouponActivity;
-import com.xiaozhuo.entity.CouponUser;
+import com.xiaozhuo.entity.*;
+import com.xiaozhuo.exception.DatabaseException;
 import com.xiaozhuo.util.LogUtil;
 
 import java.sql.*;
@@ -147,6 +147,268 @@ public class CouponDaoImpl implements CouponDao {
         return 0;
     }
 
+    @Override
+    public List<CouponBatch> selectPendingBatches(Connection conn) {
+        String sql = "SELECT * FROM coupon_batch WHERE status = 0 AND release_time <= NOW() ORDER BY release_time ASC";
+        List<CouponBatch> batches = new ArrayList<>();
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                batches.add(mapBatchRow(rs));
+            }
+        } catch (SQLException e) {
+            LogUtil.logError(logger, "查询待释放批次失败", e);
+            throw new DatabaseException("查询待释放批次失败", e);
+        }
+        return batches;
+    }
+
+    @Override
+    public int updateBatchReleased(Connection conn, Long batchId, Integer releasedStock) {
+        String sql = "UPDATE coupon_batch SET released_stock = ?, status = 1, update_time = NOW() WHERE id = ?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, releasedStock);
+            ps.setLong(2, batchId);
+            return ps.executeUpdate();
+        } catch (SQLException e) {
+            LogUtil.logError(logger, "更新批次状态失败: batchId=" + batchId, e);
+            throw new DatabaseException("更新批次状态失败", e);
+        }
+    }
+
+    @Override
+    public List<CouponBatch> selectByActivityId(Connection conn, Long activityId) {
+        String sql = "SELECT * FROM coupon_batch WHERE activity_id = ? ORDER BY batch_number ASC";
+        List<CouponBatch> batches = new ArrayList<>();
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, activityId);
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                batches.add(mapBatchRow(rs));
+            }
+        } catch (SQLException e) {
+            LogUtil.logError(logger, "查询活动批次失败: activityId=" + activityId, e);
+            throw new DatabaseException("查询活动批次失败", e);
+        }
+        return batches;
+    }
+
+    @Override
+    public CouponReservation selectReservationByUserIdAndActivityId(Connection conn, Long userId, Long activityId) {
+        String sql = "SELECT * FROM coupon_reservation WHERE user_id = ? AND activity_id = ?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, userId);
+            ps.setLong(2, activityId);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                return mapReservationRow(rs);
+            }
+        } catch (SQLException e) {
+            LogUtil.logError(logger, "查询预约记录失败: userId=" + userId + ", activityId=" + activityId, e);
+            throw new DatabaseException("查询预约记录失败", e);
+        }
+        return null;
+    }
+
+    @Override
+    public List<CouponReservation> selectReservationsByActivityId(Connection conn, Long activityId) {
+        String sql = "SELECT * FROM coupon_reservation WHERE activity_id = ? ORDER BY create_time ASC";
+        List<CouponReservation> reservations = new ArrayList<>();
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, activityId);
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                reservations.add(mapReservationRow(rs));
+            }
+        } catch (SQLException e) {
+            LogUtil.logError(logger, "查询活动预约列表失败: activityId=" + activityId, e);
+            throw new DatabaseException("查询活动预约列表失败", e);
+        }
+        return reservations;
+    }
+
+    @Override
+    public int insertReservation(Connection conn, CouponReservation reservation) {
+        String sql = "INSERT INTO coupon_reservation (activity_id, user_id, status, create_time) VALUES (?, ?, ?, NOW())";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, reservation.getActivityId());
+            ps.setLong(2, reservation.getUserId());
+            ps.setInt(3, reservation.getStatus() != null ? reservation.getStatus() : 0);
+            return ps.executeUpdate();
+        } catch (SQLException e) {
+            LogUtil.logError(logger, "插入预约记录失败", e);
+            throw new DatabaseException("插入预约记录失败", e);
+        }
+    }
+
+    @Override
+    public int updateReservationStatus(Connection conn, Long reservationId, Integer status) {
+        String sql = "UPDATE coupon_reservation SET status = ?, update_time = NOW() WHERE id = ?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, status);
+            ps.setLong(2, reservationId);
+            return ps.executeUpdate();
+        } catch (SQLException e) {
+            LogUtil.logError(logger, "更新预约状态失败: reservationId=" + reservationId, e);
+            throw new DatabaseException("更新预约状态失败", e);
+        }
+    }
+
+    @Override
+    public int countReservationsByActivityId(Connection conn, Long activityId) {
+        String sql = "SELECT COUNT(*) FROM coupon_reservation WHERE activity_id = ?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, activityId);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                return rs.getInt(1);
+            }
+        } catch (SQLException e) {
+            LogUtil.logError(logger, "统计预约人数失败: activityId=" + activityId, e);
+            throw new DatabaseException("统计预约人数失败", e);
+        }
+        return 0;
+    }
+
+    @Override
+    public int decrementStock(Connection conn, Long activityId, Integer amount) {
+        String sql = "UPDATE coupon_activity SET remaining_stock = remaining_stock - ?, version = version + 1 WHERE id = ? AND remaining_stock >= ?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, amount);
+            ps.setLong(2, activityId);
+            ps.setInt(3, amount);
+            return ps.executeUpdate();
+        } catch (SQLException e) {
+            LogUtil.logError(logger, "扣减库存失败: activityId=" + activityId, e);
+            throw new DatabaseException("扣减库存失败", e);
+        }
+    }
+    @Override
+    public List<CouponActivity> selectEndedActivities(Connection conn) {
+        String sql = "SELECT * FROM coupon_activity WHERE status = 1 AND end_time <= NOW() ORDER BY end_time ASC";
+        List<CouponActivity> activities = new ArrayList<>();
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                activities.add(mapToActivity(rs));
+            }
+        } catch (SQLException e) {
+            LogUtil.logError(logger, "查询已结束活动失败", e);
+            throw new DatabaseException("查询已结束活动失败", e);
+        }
+        return activities;
+    }
+
+    @Override
+    public int upsertWatchRecord(Connection conn, UserVideoWatchRecord record) {
+        String sql = "INSERT INTO user_video_watch_record (user_id, video_id, activity_id, watched_seconds, is_unlocked, create_time) " +
+                "VALUES (?, ?, ?, 0, 0, NOW()) " +
+                "ON DUPLICATE KEY UPDATE update_time = NOW()";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, record.getUserId());
+            ps.setLong(2, record.getVideoId());
+            ps.setLong(3, record.getActivityId());
+            return ps.executeUpdate();
+        } catch (SQLException e) {
+            LogUtil.logError(logger, "插入观看记录失败", e);
+            throw new DatabaseException("插入观看记录失败", e);
+        }
+    }
+
+    @Override
+    public UserVideoWatchRecord selectWatchRecord(Connection conn, Long userId, Long videoId, Long activityId) {
+        String sql = "SELECT * FROM user_video_watch_record WHERE user_id = ? AND video_id = ? AND activity_id = ?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, userId);
+            ps.setLong(2, videoId);
+            ps.setLong(3, activityId);
+            ResultSet rs = ps.executeQuery();
+            if (rs.next()) {
+                return mapWatchRecordRow(rs);
+            }
+        } catch (SQLException e) {
+            LogUtil.logError(logger, "查询观看记录失败", e);
+            throw new DatabaseException("查询观看记录失败", e);
+        }
+        return null;
+    }
+
+    @Override
+    public int updateWatchedSeconds(Connection conn, Long userId, Long videoId, Long activityId, Integer additionalSeconds) {
+        String sql = "UPDATE user_video_watch_record SET watched_seconds = watched_seconds + ?, update_time = NOW() " +
+                "WHERE user_id = ? AND video_id = ? AND activity_id = ? AND is_unlocked = 0";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, additionalSeconds);
+            ps.setLong(2, userId);
+            ps.setLong(3, videoId);
+            ps.setLong(4, activityId);
+            return ps.executeUpdate();
+        } catch (SQLException e) {
+            LogUtil.logError(logger, "更新观看时长失败", e);
+            throw new DatabaseException("更新观看时长失败", e);
+        }
+    }
+
+    @Override
+    public int markAsUnlocked(Connection conn, Long userId, Long videoId, Long activityId) {
+        String sql = "UPDATE user_video_watch_record SET is_unlocked = 1, unlock_time = NOW(), update_time = NOW() " +
+                "WHERE user_id = ? AND video_id = ? AND activity_id = ?";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, userId);
+            ps.setLong(2, videoId);
+            ps.setLong(3, activityId);
+            return ps.executeUpdate();
+        } catch (SQLException e) {
+            LogUtil.logError(logger, "标记解锁失败", e);
+            throw new DatabaseException("标记解锁失败", e);
+        }
+    }
+
+    private UserVideoWatchRecord mapWatchRecordRow(ResultSet rs) throws SQLException {
+        UserVideoWatchRecord record = new UserVideoWatchRecord();
+        record.setId(rs.getLong("id"));
+        record.setUserId(rs.getLong("user_id"));
+        record.setVideoId(rs.getLong("video_id"));
+        record.setActivityId(rs.getLong("activity_id"));
+        record.setWatchedSeconds(rs.getInt("watched_seconds"));
+        record.setIsUnlocked(rs.getInt("is_unlocked"));
+
+        Timestamp unlockTime = rs.getTimestamp("unlock_time");
+        if (unlockTime != null) {
+            record.setUnlockTime(unlockTime.toLocalDateTime());
+        }
+
+        record.setCreateTime(rs.getTimestamp("create_time").toLocalDateTime());
+        record.setUpdateTime(rs.getTimestamp("update_time").toLocalDateTime());
+        return record;
+    }
+
+    private CouponReservation mapReservationRow(ResultSet rs) throws SQLException {
+        CouponReservation reservation = new CouponReservation();
+        reservation.setId(rs.getLong("id"));
+        reservation.setActivityId(rs.getLong("activity_id"));
+        reservation.setUserId(rs.getLong("user_id"));
+        reservation.setStatus(rs.getInt("status"));
+        reservation.setCreateTime(rs.getTimestamp("create_time").toLocalDateTime());
+        reservation.setUpdateTime(rs.getTimestamp("update_time").toLocalDateTime());
+        return reservation;
+    }
+
+
+    private CouponBatch mapBatchRow(ResultSet rs) throws SQLException {
+        CouponBatch batch = new CouponBatch();
+        batch.setId(rs.getLong("id"));
+        batch.setActivityId(rs.getLong("activity_id"));
+        batch.setBatchNumber(rs.getInt("batch_number"));
+        batch.setStockCount(rs.getInt("stock_count"));
+        batch.setReleasedStock(rs.getInt("released_stock"));
+        batch.setReleaseTime(rs.getTimestamp("release_time").toLocalDateTime());
+        batch.setStatus(rs.getInt("status"));
+        batch.setCreateTime(rs.getTimestamp("create_time").toLocalDateTime());
+        batch.setUpdateTime(rs.getTimestamp("update_time").toLocalDateTime());
+        return batch;
+    }
+
     private CouponActivity mapToActivity(ResultSet rs) throws SQLException {
         CouponActivity activity = new CouponActivity();
         activity.setId(rs.getLong("id"));
@@ -161,6 +423,8 @@ public class CouponDaoImpl implements CouponDao {
         activity.setVersion(rs.getInt("version"));
         activity.setCreateTime(rs.getTimestamp("create_time").toLocalDateTime());
         activity.setUpdateTime(rs.getTimestamp("update_time").toLocalDateTime());
+        activity.setRequiredWatchSeconds(rs.getInt("required_watch_seconds"));
+
         return activity;
     }
 

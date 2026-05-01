@@ -15,10 +15,7 @@ import com.xiaozhuo.entity.VideoInfo;
 import com.xiaozhuo.result.Result;
 import com.xiaozhuo.service.FeedService;
 import com.xiaozhuo.service.VideoService;
-import com.xiaozhuo.util.ConnectionPool;
-import com.xiaozhuo.util.FileUtil;
-import com.xiaozhuo.util.OSSUtil;
-import com.xiaozhuo.util.RedisUtil;
+import com.xiaozhuo.util.*;
 
 import java.io.InputStream;
 import java.time.LocalDateTime;
@@ -106,13 +103,13 @@ public class VideoServiceImpl implements VideoService {
     }
 
     @Override
-    public Result<VideoInfo> getVideoById(Long id) {
+    public Result<VideoInfo> getVideoById(Long id, Long viewerId) {
         try {
             if (id == null || id <= 0) {
-                return Result.fail(400, "视频ID无效");
+                return Result.fail(400, "Invalid video ID");
             }
 
-            // 尝试从缓存获取
+            // 1. 尝试从缓存获取
             String cacheKey = VIDEO_CACHE_PREFIX + id;
             String cachedVideo = RedisUtil.get(cacheKey);
 
@@ -120,21 +117,30 @@ public class VideoServiceImpl implements VideoService {
             if (cachedVideo != null) {
                 video = JSON.parseObject(cachedVideo, VideoInfo.class);
             } else {
+                // 2. 缓存没有，查数据库
                 video = videoDao.selectById(id);
                 if (video != null) {
+                    // 注意：这里先存缓存，保证后续请求能拿到基础数据
                     RedisUtil.setex(cacheKey, CACHE_EXPIRE_SECONDS, JSON.toJSONString(video));
-                    // 增加播放量
-                    videoDao.incrementViewCount(id);
-                    video.setViewCount(video.getViewCount() + 1);
                 }
             }
 
             if (video != null) {
-                return Result.success("查询成功", video);
+                // 3.  防刷逻辑：只有有效观看才增加数据库计数
+                if (viewerId != null && ViewCounterUtil.recordValidView(viewerId, id)) {
+                    videoDao.incrementViewCount(id);
+                    System.out.println(" Valid view recorded for user: " + viewerId + ", video: " + id);
+
+                    // 4. 可选：异步更新缓存中的 viewCount，或者干脆让缓存过期后自动从 DB 拉取最新值
+                    // 为了简单起见，建议这里不直接改缓存对象，而是让缓存过期后重新查库
+                }
+
+                return Result.success("Query successful", video);
             } else {
-                return Result.fail(404, "视频不存在");
+                return Result.fail(404, "Video not found");
             }
         } catch (Exception e) {
+            e.printStackTrace();
             return Result.error();
         }
     }

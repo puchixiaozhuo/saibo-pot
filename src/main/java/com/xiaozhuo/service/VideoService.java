@@ -19,11 +19,11 @@ public interface VideoService {
     Result<Map<String, Object>> uploadVideo(VideoInfo video, byte[] videoBytes, String fileName, byte[] coverBytes, String coverFileName);
 
     /**
-     * 根据视频id获取视频信息
+     * 根据ID获取视频详情（带防刷播放量统计）
      * @param id 视频ID
-     * @return 视频信息
+     * @param viewerId 观看者ID（用于防刷）
      */
-    Result<VideoInfo> getVideoById(Long id);
+    Result<VideoInfo> getVideoById(Long id, Long viewerId);
 
     /**
      * 获取视频列表
