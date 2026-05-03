@@ -227,6 +227,8 @@ public class VideoServlet extends HttpServlet {
         byte[] coverBytes = null;
         String coverFileName = null;
 
+        String couponActivityJson = null;
+
         for (FileItem item : items) {
             if (item.isFormField()) {
                 String fieldName = item.getFieldName();
@@ -244,6 +246,9 @@ public class VideoServlet extends HttpServlet {
                         break;
                     case "resolution":
                         video.setResolution(fieldValue);
+                        break;
+                    case "couponActivity":
+                        couponActivityJson = fieldValue;
                         break;
                 }
             } else {
@@ -268,7 +273,7 @@ public class VideoServlet extends HttpServlet {
             throw new BusinessException(400, "标题不能为空");
         }
 
-        Result<Map<String, Object>> result = videoService.uploadVideo(video, videoBytes, videoFileName, coverBytes, coverFileName);
+        Result<Map<String, Object>> result = videoService.uploadVideo(video, videoBytes, videoFileName, coverBytes, coverFileName, couponActivityJson);
         resp.getWriter().write(JSON.toJSONString(result));
     }
 

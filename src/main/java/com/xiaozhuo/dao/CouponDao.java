@@ -154,4 +154,20 @@ public interface CouponDao {
      * @return 影响行数
      */
     int markAsUnlocked(Connection conn, Long userId, Long videoId, Long activityId);
+
+    /**
+     * 插入优惠券活动
+     * @param conn 数据库连接
+     * @param activity 活动信息
+     * @return 影响行数
+     */
+    int insertActivity(Connection conn, CouponActivity activity);
+
+    /**
+     * 插入批次记录
+     * @param conn 数据库连接
+     * @param batch 批次信息
+     * @return 影响行数
+     */
+    int insertBatch(Connection conn, CouponBatch batch);
 }

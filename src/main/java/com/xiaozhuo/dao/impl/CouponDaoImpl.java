@@ -364,6 +364,78 @@ public class CouponDaoImpl implements CouponDao {
         }
     }
 
+    @Override
+    public int insertActivity(Connection conn, CouponActivity activity) {
+        String sql = "INSERT INTO coupon_activity (video_id, activity_type, title, description, discount_content, total_stock, remaining_stock, start_time, end_time, status, version, required_watch_seconds, batch_config, lottery_config, create_time, update_time) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())";
+
+        try (PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            pstmt.setLong(1, activity.getVideoId());
+            pstmt.setInt(2, activity.getActivityType());
+            pstmt.setString(3, activity.getTitle());
+            pstmt.setString(4, activity.getDescription());
+            pstmt.setString(5, activity.getDiscountContent());
+            pstmt.setInt(6, activity.getTotalStock());
+            pstmt.setInt(7, activity.getRemainingStock());
+            pstmt.setTimestamp(8, Timestamp.valueOf(activity.getStartTime()));
+            pstmt.setTimestamp(9, Timestamp.valueOf(activity.getEndTime()));
+            pstmt.setInt(10, activity.getStatus());
+            pstmt.setInt(11, activity.getVersion());
+            pstmt.setInt(12, activity.getRequiredWatchSeconds());
+            pstmt.setString(13, activity.getBatchConfig());
+            pstmt.setString(14, activity.getLotteryConfig());
+
+            int rows = pstmt.executeUpdate();
+
+            if (rows > 0) {
+                try (ResultSet generatedKeys = pstmt.getGeneratedKeys()) {
+                    if (generatedKeys.next()) {
+                        activity.setId(generatedKeys.getLong(1));
+                    }
+                }
+            }
+
+            LogUtil.logBusiness(logger, "INSERT_ACTIVITY",
+                    "Created coupon activity: " + activity.getTitle() + " for video " + activity.getVideoId());
+
+            return rows;
+        } catch (SQLException e) {
+            LogUtil.logError(logger, "插入优惠券活动失败", e);
+            throw new DatabaseException("插入优惠券活动失败", e);
+        }
+    }
+
+    @Override
+    public int insertBatch(Connection conn, CouponBatch batch) {
+        String sql = "INSERT INTO coupon_batch (activity_id, batch_number, stock_count, released_stock, release_time, status, create_time, update_time) VALUES (?, ?, ?, ?, ?, ?, NOW(), NOW())";
+
+        try (PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            pstmt.setLong(1, batch.getActivityId());
+            pstmt.setInt(2, batch.getBatchNumber());
+            pstmt.setInt(3, batch.getStockCount());
+            pstmt.setInt(4, batch.getReleasedStock());
+            pstmt.setTimestamp(5, Timestamp.valueOf(batch.getReleaseTime()));
+            pstmt.setInt(6, batch.getStatus());
+
+            int rows = pstmt.executeUpdate();
+
+            if (rows > 0) {
+                try (ResultSet generatedKeys = pstmt.getGeneratedKeys()) {
+                    if (generatedKeys.next()) {
+                        batch.setId(generatedKeys.getLong(1));
+                    }
+                }
+            }
+
+            LogUtil.logBusiness(logger, "INSERT_BATCH",
+                    "Created batch " + batch.getBatchNumber() + " for activity " + batch.getActivityId());
+
+            return rows;
+        } catch (SQLException e) {
+            LogUtil.logError(logger, "插入批次记录失败", e);
+            throw new DatabaseException("插入批次记录失败", e);
+        }
+    }
+
     private UserVideoWatchRecord mapWatchRecordRow(ResultSet rs) throws SQLException {
         UserVideoWatchRecord record = new UserVideoWatchRecord();
         record.setId(rs.getLong("id"));
@@ -403,18 +475,27 @@ public class CouponDaoImpl implements CouponDao {
         batch.setStockCount(rs.getInt("stock_count"));
         batch.setReleasedStock(rs.getInt("released_stock"));
         batch.setReleaseTime(rs.getTimestamp("release_time").toLocalDateTime());
+
+        Timestamp actualReleaseTime = rs.getTimestamp("actual_release_time");
+        if (actualReleaseTime != null) {
+            batch.setActualReleaseTime(actualReleaseTime.toLocalDateTime());
+        }
+
         batch.setStatus(rs.getInt("status"));
         batch.setCreateTime(rs.getTimestamp("create_time").toLocalDateTime());
         batch.setUpdateTime(rs.getTimestamp("update_time").toLocalDateTime());
         return batch;
     }
 
+
     private CouponActivity mapToActivity(ResultSet rs) throws SQLException {
         CouponActivity activity = new CouponActivity();
         activity.setId(rs.getLong("id"));
         activity.setVideoId(rs.getLong("video_id"));
+        activity.setActivityType(rs.getInt("activity_type"));
         activity.setTitle(rs.getString("title"));
         activity.setDescription(rs.getString("description"));
+        activity.setDiscountContent(rs.getString("discount_content"));
         activity.setTotalStock(rs.getInt("total_stock"));
         activity.setRemainingStock(rs.getInt("remaining_stock"));
         activity.setStartTime(rs.getTimestamp("start_time").toLocalDateTime());
@@ -424,6 +505,8 @@ public class CouponDaoImpl implements CouponDao {
         activity.setCreateTime(rs.getTimestamp("create_time").toLocalDateTime());
         activity.setUpdateTime(rs.getTimestamp("update_time").toLocalDateTime());
         activity.setRequiredWatchSeconds(rs.getInt("required_watch_seconds"));
+        activity.setBatchConfig(rs.getString("batch_config"));
+        activity.setLotteryConfig(rs.getString("lottery_config"));
 
         return activity;
     }

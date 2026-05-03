@@ -4,25 +4,31 @@ import com.xiaozhuo.dao.CommentDao;
 import com.xiaozhuo.entity.VideoComment;
 import com.xiaozhuo.exception.DatabaseException;
 import com.xiaozhuo.util.LogUtil;
+import com.xiaozhuo.util.ShardingUtil;
 
 import java.sql.*;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Logger;
 
 /**
- * 评论数据访问实现类
+ * 评论数据访问实现类（支持水平分表）
  */
 public class CommentDaoImpl implements CommentDao {
 
     private static final Logger logger = LogUtil.getLogger(CommentDaoImpl.class);
+    private static final String BASE_TABLE_NAME = "video_comment";
 
     /**
-     * 插入一条评论
+     * 插入一条评论（自动路由到对应月份的分表）
      */
     @Override
     public int insert(Connection conn, VideoComment comment) {
-        String sql = "INSERT INTO video_comment (video_id, user_id, parent_id, content, like_count, create_time, update_time) VALUES (?, ?, ?, ?, 0, NOW(), NOW())";
+        // 🔥 根据当前时间计算分表名
+        String tableName = ShardingUtil.getCommentTableName(BASE_TABLE_NAME, LocalDateTime.now());
+
+        String sql = "INSERT INTO " + tableName + " (video_id, user_id, parent_id, content, like_count, create_time, update_time) VALUES (?, ?, ?, ?, 0, NOW(), NOW())";
         try (PreparedStatement ps = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
             ps.setLong(1, comment.getVideoId());
             ps.setLong(2, comment.getUserId());
@@ -31,17 +37,15 @@ public class CommentDaoImpl implements CommentDao {
 
             int rows = ps.executeUpdate();
 
-            // 获取自增ID
             if (rows > 0) {
                 ResultSet rs = ps.getGeneratedKeys();
                 if (rs.next()) {
                     comment.setId(rs.getLong(1));
                 }
             }
-
             return rows;
         } catch (SQLException e) {
-            LogUtil.logError(logger, "插入评论失败", e);
+            LogUtil.logError(logger, "插入评论失败: table=" + tableName, e);
             throw new DatabaseException("插入评论失败", e);
         }
     }
@@ -66,21 +70,19 @@ public class CommentDaoImpl implements CommentDao {
     }
 
     /**
-     * 根据视频ID查询所有评论，按热度排序
+     * 根据视频ID查询所有评论，按热度排序（聚合最近 6 个月的分表）
      */
     @Override
     public List<VideoComment> selectByVideoIdOrderByHot(Connection conn, Long videoId, int pageNum, int pageSize) {
-        String sql = "SELECT * FROM video_comment WHERE video_id = ? AND is_delete = 0 ORDER BY like_count DESC, create_time DESC LIMIT ?, ?";
-        return queryComments(conn, sql, videoId, pageNum, pageSize);
+        return queryCommentsFromShards(conn, videoId, pageNum, pageSize, "like_count DESC, create_time DESC");
     }
 
     /**
-     * 根据视频ID查询所有评论，按时间排序
+     * 根据视频ID查询所有评论，按时间排序（聚合最近 6 个月的分表）
      */
     @Override
     public List<VideoComment> selectByVideoIdOrderByTime(Connection conn, Long videoId, int pageNum, int pageSize) {
-        String sql = "SELECT * FROM video_comment WHERE video_id = ? AND is_delete = 0 ORDER BY create_time DESC LIMIT ?, ?";
-        return queryComments(conn, sql, videoId, pageNum, pageSize);
+        return queryCommentsFromShards(conn, videoId, pageNum, pageSize, "create_time DESC");
     }
 
     /**
@@ -103,21 +105,66 @@ public class CommentDaoImpl implements CommentDao {
         return comments;
     }
 
+
     /**
-     * 根据视频ID查询评论数量
+     * 从多个分表中聚合查询评论
+     */
+    private List<VideoComment> queryCommentsFromShards(Connection conn, Long videoId, int pageNum, int pageSize, String orderBy) {
+        String[] tables = ShardingUtil.getRecentMonthTables(BASE_TABLE_NAME, 6);
+
+        StringBuilder sqlBuilder = new StringBuilder();
+        for (int i = 0; i < tables.length; i++) {
+            if (i > 0) sqlBuilder.append(" UNION ALL ");
+            sqlBuilder.append("SELECT * FROM ").append(tables[i])
+                    .append(" WHERE video_id = ? AND is_delete = 0");
+        }
+        sqlBuilder.append(" ORDER BY ").append(orderBy).append(" LIMIT ?, ?");
+
+        List<VideoComment> comments = new ArrayList<>();
+        try (PreparedStatement ps = conn.prepareStatement(sqlBuilder.toString())) {
+            // 为每个子查询设置 video_id
+            for (int i = 0; i < tables.length; i++) {
+                ps.setLong(i + 1, videoId);
+            }
+            ps.setInt(tables.length + 1, (pageNum - 1) * pageSize);
+            ps.setInt(tables.length + 2, pageSize);
+
+            ResultSet rs = ps.executeQuery();
+            while (rs.next()) {
+                comments.add(mapRow(rs));
+            }
+        } catch (SQLException e) {
+            LogUtil.logError(logger, "聚合查询评论失败: videoId=" + videoId, e);
+            throw new DatabaseException("查询评论列表失败", e);
+        }
+        return comments;
+    }
+
+    /**
+     * 根据视频ID查询评论数量（聚合统计）
      */
     @Override
     public int countByVideoId(Connection conn, Long videoId) {
-        String sql = "SELECT COUNT(*) FROM video_comment WHERE video_id = ? AND is_delete = 0";
-        try (PreparedStatement ps = conn.prepareStatement(sql)) {
-            ps.setLong(1, videoId);
+        String[] tables = ShardingUtil.getRecentMonthTables(BASE_TABLE_NAME, 6);
+
+        StringBuilder sqlBuilder = new StringBuilder("SELECT SUM(cnt) FROM (");
+        for (int i = 0; i < tables.length; i++) {
+            if (i > 0) sqlBuilder.append(" UNION ALL ");
+            sqlBuilder.append("SELECT COUNT(*) as cnt FROM ").append(tables[i])
+                    .append(" WHERE video_id = ? AND is_delete = 0");
+        }
+        sqlBuilder.append(") t");
+
+        try (PreparedStatement ps = conn.prepareStatement(sqlBuilder.toString())) {
+            for (int i = 0; i < tables.length; i++) {
+                ps.setLong(i + 1, videoId);
+            }
             ResultSet rs = ps.executeQuery();
             if (rs.next()) {
                 return rs.getInt(1);
             }
         } catch (SQLException e) {
             LogUtil.logError(logger, "统计评论数量失败: videoId=" + videoId, e);
-            throw new DatabaseException("统计评论数量失败", e);
         }
         return 0;
     }
@@ -209,7 +256,7 @@ public class CommentDaoImpl implements CommentDao {
     }
 
     /**
-     * 将 ResultSet 映射为 VideoComment 对象
+     * 映射行数据
      */
     private VideoComment mapRow(ResultSet rs) throws SQLException {
         VideoComment comment = new VideoComment();

@@ -14,11 +14,17 @@ public class CouponActivity {
     @Column("video_id")
     private Long videoId;
 
+    @Column("activity_type")
+    private Integer activityType;
+
     @Column("title")
     private String title;
 
     @Column("description")
     private String description;
+
+    @Column("discount_content")
+    private String discountContent;
 
     @Column("total_stock")
     private Integer totalStock;
@@ -44,6 +50,12 @@ public class CouponActivity {
     @Column("update_time")
     private LocalDateTime updateTime;
 
-    @Column("required-watch-seconds")
+    @Column("required_watch_seconds")
     private Integer requiredWatchSeconds;
+
+    @Column("batch_config")
+    private String batchConfig;
+
+    @Column("lottery_config")
+    private String lotteryConfig;
 }

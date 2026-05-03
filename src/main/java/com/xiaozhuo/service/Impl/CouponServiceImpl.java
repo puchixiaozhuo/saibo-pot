@@ -1,7 +1,13 @@
 package com.xiaozhuo.service.Impl;
 
+import com.alibaba.csp.sentinel.Entry;
+import com.alibaba.csp.sentinel.SphU;
+import com.alibaba.csp.sentinel.slots.block.BlockException;
+import com.alibaba.fastjson.JSON;
 import com.xiaozhuo.annotation.Bean;
 import com.xiaozhuo.annotation.Transactional;
+import com.xiaozhuo.bean.dto.CouponGrabMessage;
+import com.xiaozhuo.constant.MQConstant;
 import com.xiaozhuo.dao.CouponDao;
 import com.xiaozhuo.dao.impl.CouponDaoImpl;
 import com.xiaozhuo.entity.*;
@@ -10,6 +16,7 @@ import com.xiaozhuo.service.CouponService;
 import com.xiaozhuo.util.ConnectionPool;
 import com.xiaozhuo.util.LogUtil;
 import com.xiaozhuo.util.RedisUtil;
+import com.xiaozhuo.util.RocketMQUtil;
 
 import java.sql.*;
 import java.time.LocalDateTime;
@@ -27,23 +34,26 @@ public class CouponServiceImpl implements CouponService {
     private static final String COUPON_STOCK_PREFIX = "coupon:stock:";
     private static final String COUPON_USER_PREFIX = "coupon:user:";
 
+
     @Override
+    @Transactional
     public Result<Map<String, Object>> grabCoupon(Long userId, Long activityId) {
-        Connection conn = null;
+        Entry entry = null;
         try {
+            // 🔥 Sentinel 限流检查
+            entry = SphU.entry("coupon:grab");
+
             if (userId == null || activityId == null) {
                 return Result.fail(400, "参数无效");
             }
 
-            conn = ConnectionPool.getConnection();
+            Connection conn = ConnectionPool.getConnection();
 
-            // 1. 检查活动是否存在
             CouponActivity activity = couponDao.selectById(conn, activityId);
             if (activity == null) {
                 return Result.fail(404, "活动不存在");
             }
 
-            // 2. 检查活动时间
             LocalDateTime now = LocalDateTime.now();
             if (now.isBefore(activity.getStartTime())) {
                 return Result.fail(400, "活动未开始");
@@ -52,14 +62,8 @@ public class CouponServiceImpl implements CouponService {
                 return Result.fail(400, "活动已结束");
             }
 
-            // 3. 🔥 检查是否需要观看时长解锁
             if (activity.getRequiredWatchSeconds() != null && activity.getRequiredWatchSeconds() > 0) {
-                // 查询用户是否已解锁（查询任意视频的观看记录）
-                // 这里简化处理：只要有一个视频解锁了就可以
-                // 实际业务可能需要指定 videoId，或者查询所有关联视频
-
-                // 临时方案：查询该活动下任意视频的解锁状态
-                UserVideoWatchRecord watchRecord = findAnyUnlockedRecord(conn, userId, activityId);
+                UserVideoWatchRecord watchRecord = findAnyUnlockedRecord(conn, activityId, userId);
 
                 if (watchRecord == null || watchRecord.getIsUnlocked() != 1) {
                     return Result.fail(400, "需要先观看视频解锁，观看时长要求：" + activity.getRequiredWatchSeconds() + "秒");
@@ -69,34 +73,87 @@ public class CouponServiceImpl implements CouponService {
                         + ", ActivityID: " + activityId);
             }
 
-            // 4. 检查是否已领取
             CouponUser existingCoupon = couponDao.selectByUserIdAndActivityId(conn, userId, activityId);
             if (existingCoupon != null) {
                 return Result.fail(400, "已领取过该活动的优惠券");
             }
 
-            // 5. 从 Redis 获取库存（使用 Lua 脚本保证原子性）
             String stockKey = "coupon:stock:" + activityId;
             String userKey = "coupon:user:" + activityId + ":" + userId;
 
-            // 使用 SETNX 防止重复领取
             Boolean isFirstGrab = RedisUtil.setnx(userKey, "1");
             if (!isFirstGrab) {
                 return Result.fail(400, "请勿重复领取");
             }
 
-            // 设置过期时间（1小时）
             RedisUtil.expire(userKey, 3600);
 
-            // 6. 扣减库存（Redis）
             Long remaining = RedisUtil.decr(stockKey);
             if (remaining < 0) {
-                // 库存不足，恢复用户标记
                 RedisUtil.del(userKey);
                 return Result.fail(400, "优惠券已抢完");
             }
 
-            // 7. 生成优惠券
+            // 🔥 使用 RocketMQ 异步处理优惠券生成和数据库写入（削峰）
+            try {
+                String requestId = UUID.randomUUID().toString().replace("-", "");
+                CouponGrabMessage message = new CouponGrabMessage(
+                        userId,
+                        activityId,
+                        System.currentTimeMillis(),
+                        requestId
+                );
+
+                String messageBody = JSON.toJSONString(message);
+                RocketMQUtil.sendAsyncMessage(
+                        MQConstant.TOPIC_COUPON_GRAB,
+                        MQConstant.TAG_GRAB_REQUEST,
+                        messageBody
+                );
+
+                LogUtil.logBusiness(logger, "COUPON_GRAB_MESSAGE_SENT",
+                        "UserID: " + userId + ", ActivityID: " + activityId + ", RequestID: " + requestId);
+
+            } catch (Exception e) {
+                System.err.println("⚠️ MQ 发送失败，降级为同步处理: " + e.getMessage());
+                e.printStackTrace();
+                // 降级：直接生成优惠券
+                generateCouponSync(userId, activityId);
+            }
+
+            Map<String, Object> data = new HashMap<>();
+            data.put("message", "抢购请求已提交，正在处理中...");
+            data.put("requestTime", LocalDateTime.now().toString());
+
+            System.out.println("✅ Coupon grab request submitted - UserID: " + userId
+                    + ", ActivityID: " + activityId);
+
+            return Result.success("抢购请求已提交", data);
+
+        } catch (BlockException ex) {
+            // 🔥 触发限流
+            logger.warning("Coupon grab blocked by Sentinel: " + ex.getClass().getSimpleName());
+            return Result.fail(429, "系统繁忙，请稍后重试（触发限流保护）");
+        } catch (Exception e) {
+            e.printStackTrace();
+            LogUtil.logError(logger, "抢购失败", e);
+            return Result.error();
+        } finally {
+            // 🔥 确保退出 Sentinel 上下文
+            if (entry != null) {
+                entry.exit();
+            }
+        }
+    }
+
+    /**
+     * 同步生成优惠券（降级方案）
+     */
+    private void generateCouponSync(Long userId, Long activityId) {
+        Connection conn = null;
+        try {
+            conn = ConnectionPool.getConnection();
+
             String couponCode = generateCouponCode();
             CouponUser couponUser = new CouponUser();
             couponUser.setActivityId(activityId);
@@ -108,22 +165,12 @@ public class CouponServiceImpl implements CouponService {
 
             couponDao.insertCouponUser(conn, couponUser);
 
-            // 8. 异步同步库存到数据库
-            asyncUpdateStock(activityId);
-
-            Map<String, Object> data = new HashMap<>();
-            data.put("couponCode", couponCode);
-            data.put("expireTime", couponUser.getExpireTime());
-
-            System.out.println("✅ Coupon grabbed - UserID: " + userId
-                    + ", ActivityID: " + activityId
+            System.out.println("✅ [降级] Coupon generated synchronously - UserID: " + userId
                     + ", CouponCode: " + couponCode);
 
-            return Result.success("领取成功", data);
-
         } catch (Exception e) {
+            System.err.println("❌ [降级] Failed to generate coupon: " + e.getMessage());
             e.printStackTrace();
-            return Result.error();
         } finally {
             if (conn != null) {
                 ConnectionPool.returnConnection(conn);

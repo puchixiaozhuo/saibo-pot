@@ -1,24 +1,34 @@
 package com.xiaozhuo.service.Impl;
 
+import com.alibaba.csp.sentinel.Entry;
+import com.alibaba.csp.sentinel.SphU;
+import com.alibaba.csp.sentinel.slots.block.BlockException;
 import com.alibaba.fastjson.JSON;
 import com.xiaozhuo.annotation.Bean;
 import com.xiaozhuo.annotation.Transactional;
+import com.xiaozhuo.bean.dto.CouponActivityDTO;
+import com.xiaozhuo.constant.MQConstant;
+import com.xiaozhuo.dao.CouponDao;
 import com.xiaozhuo.dao.FavoriteDao;
 import com.xiaozhuo.dao.VideoCacheRecordDao;
 import com.xiaozhuo.dao.VideoDao;
+import com.xiaozhuo.dao.impl.CouponDaoImpl;
 import com.xiaozhuo.dao.impl.FavoriteDaoImpl;
 import com.xiaozhuo.dao.impl.VideoCacheRecordDaoImpl;
 import com.xiaozhuo.dao.impl.VideoDaoImpl;
-import com.xiaozhuo.entity.UserFavorite;
-import com.xiaozhuo.entity.VideoCacheRecord;
-import com.xiaozhuo.entity.VideoInfo;
+import com.xiaozhuo.entity.*;
+import com.xiaozhuo.exception.BusinessException;
 import com.xiaozhuo.result.Result;
 import com.xiaozhuo.service.FeedService;
 import com.xiaozhuo.service.VideoService;
 import com.xiaozhuo.util.*;
 
 import java.io.InputStream;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -34,9 +44,13 @@ import java.net.URL;                  // URL 类
 @Bean
 public class VideoServiceImpl implements VideoService {
 
+    private static final java.util.logging.Logger logger = LogUtil.getLogger(VideoServiceImpl.class);
+
+
     private VideoDao videoDao = new VideoDaoImpl();
     private VideoCacheRecordDao cacheRecordDao = new VideoCacheRecordDaoImpl();
     private FavoriteDao favoriteDao = new FavoriteDaoImpl();
+    private CouponDao couponDao = new CouponDaoImpl();
     private FeedService feedService = new FeedServiceImpl();
 
 
@@ -49,9 +63,13 @@ public class VideoServiceImpl implements VideoService {
 
     @Override
     @Transactional
-    public Result<Map<String, Object>> uploadVideo(VideoInfo video, byte[] videoBytes, String fileName, byte[] coverBytes, String coverFileName) {
+    public Result<Map<String, Object>> uploadVideo(VideoInfo video, byte[] videoBytes, String fileName, byte[] coverBytes, String coverFileName, String couponActivityJson) {
+        Entry entry = null;
+        Connection conn = null;
         try {
-            // 参数校验
+            // 🔥 Sentinel 限流检查
+            entry = SphU.entry("video:upload");
+
             if (video.getTitle() == null || video.getTitle().trim().isEmpty()) {
                 return Result.fail(400, "视频标题不能为空");
             }
@@ -62,33 +80,113 @@ public class VideoServiceImpl implements VideoService {
                 return Result.fail(400, "视频文件不能为空");
             }
 
-            // 上传视频文件
             String videoUrl = OSSUtil.uploadFile(videoBytes, fileName);
             video.setVideoUrl(videoUrl);
             video.setFileSize((long) videoBytes.length);
 
-            // 上传封面文件
             if (coverBytes != null && coverBytes.length > 0) {
                 String coverUrl = OSSUtil.uploadFile(coverBytes, coverFileName);
                 video.setCover(coverUrl);
             }
 
-            // 设置默认值
             if (video.getViewCount() == null) video.setViewCount(0L);
             if (video.getLikeCount() == null) video.setLikeCount(0L);
             if (video.getCommentCount() == null) video.setCommentCount(0L);
             if (video.getFavoriteCount() == null) video.setFavoriteCount(0L);
-            video.setCreateTime(java.time.LocalDateTime.now());
-            video.setUpdateTime(java.time.LocalDateTime.now());
+            video.setCreateTime(LocalDateTime.now());
+            video.setUpdateTime(LocalDateTime.now());
 
-            // 插入数据库
+            conn = TransactionManager.getConnection();
             videoDao.insert(video);
 
-            // 🔥 Push模式：将新视频推送到所有粉丝的Feed流
+            Long videoId = video.getId();
+
+            // 🔥 垂直分表：将 description 单独存入扩展表
+            if (video.getDescription() != null && !video.getDescription().trim().isEmpty()) {
+                saveVideoDescription(conn, videoId, video.getDescription());
+            }
+
+            if (couponActivityJson != null && !couponActivityJson.trim().isEmpty()) {
+                try {
+                    CouponActivityDTO activityDTO = JSON.parseObject(couponActivityJson, CouponActivityDTO.class);
+
+                    String validationError = validateCouponActivity(activityDTO, videoId);
+                    if (validationError != null) {
+                        throw new BusinessException(400, validationError);
+                    }
+
+                    CouponActivity activity = new CouponActivity();
+                    activity.setVideoId(videoId);
+                    activity.setActivityType(activityDTO.getActivityType());
+                    activity.setTitle(activityDTO.getTitle());
+                    activity.setDescription(activityDTO.getDescription());
+                    activity.setDiscountContent(activityDTO.getDiscountContent());
+                    activity.setTotalStock(activityDTO.getTotalStock());
+                    activity.setRemainingStock(activityDTO.getTotalStock());
+                    activity.setStartTime(LocalDateTime.parse(activityDTO.getStartTime(), DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+                    activity.setEndTime(LocalDateTime.parse(activityDTO.getEndTime(), DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+                    activity.setStatus(0);
+                    activity.setVersion(0);
+                    activity.setRequiredWatchSeconds(activityDTO.getRequiredWatchSeconds() != null ? activityDTO.getRequiredWatchSeconds() : 0);
+
+                    if (activityDTO.getBatches() != null && !activityDTO.getBatches().isEmpty()) {
+                        activity.setBatchConfig(JSON.toJSONString(activityDTO.getBatches()));
+                    }
+
+                    if (activityDTO.getLotteryConfig() != null) {
+                        activity.setLotteryConfig(JSON.toJSONString(activityDTO.getLotteryConfig()));
+                    }
+
+                    couponDao.insertActivity(conn, activity);
+
+                    Long activityId = activity.getId();
+
+                    if (activityDTO.getActivityType() == 2 && activityDTO.getBatches() != null) {
+                        for (CouponActivityDTO.BatchConfigDTO batchDTO : activityDTO.getBatches()) {
+                            CouponBatch batch = new CouponBatch();
+                            batch.setActivityId(activityId);
+                            batch.setBatchNumber(batchDTO.getBatchNumber());
+                            batch.setStockCount(batchDTO.getStockCount());
+                            batch.setReleasedStock(0);
+                            batch.setReleaseTime(LocalDateTime.parse(batchDTO.getReleaseTime(), DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")));
+                            batch.setStatus(0);
+                            couponDao.insertBatch(conn, batch);
+                        }
+                    }
+
+                    String stockKey = "coupon:stock:" + activityId;
+                    RedisUtil.set(stockKey, String.valueOf(activity.getTotalStock()));
+
+                    LogUtil.logBusiness(logger, "CREATE_COUPON_ACTIVITY",
+                            "Video " + videoId + " created coupon activity " + activityId + ", type: " + activityDTO.getActivityType());
+
+                } catch (BusinessException e) {
+                    throw e;
+                } catch (Exception e) {
+                    LogUtil.logError(logger, "创建优惠券活动失败", e);
+                    throw new BusinessException(500, "创建优惠券活动失败：" + e.getMessage());
+                }
+            }
+
+            // 🔥 使用 RocketMQ 异步推送 Feed 流
             try {
-                feedService.pushFeedToFollowers(video.getAuthorId(), video.getId(), video.getCreateTime());
+                Map<String, Object> feedMessage = new HashMap<>();
+                feedMessage.put("authorId", video.getAuthorId());
+                feedMessage.put("videoId", video.getId());
+                feedMessage.put("publishTime", video.getCreateTime().toString());
+
+                String messageBody = JSON.toJSONString(feedMessage);
+                RocketMQUtil.sendAsyncMessage(
+                        MQConstant.TOPIC_FEED_PUSH,
+                        MQConstant.TAG_FEED_NEW_VIDEO,
+                        messageBody
+                );
+
+                LogUtil.logBusiness(logger, "FEED_PUSH_MESSAGE_SENT",
+                        "Video " + videoId + " feed push message sent to MQ");
             } catch (Exception e) {
-                System.err.println("⚠️ Push Feed 失败（不影响视频发布）: " + e.getMessage());
+                System.err.println("⚠️ Feed Push MQ 发送失败（不影响视频发布）: " + e.getMessage());
+                e.printStackTrace();
             }
 
             Map<String, Object> data = new HashMap<>();
@@ -96,9 +194,23 @@ public class VideoServiceImpl implements VideoService {
             data.put("videoUrl", videoUrl);
 
             return Result.success("视频上传成功", data);
+        } catch (BlockException ex) {
+            // 🔥 触发限流
+            logger.warning("Video upload blocked by Sentinel: " + ex.getClass().getSimpleName());
+            return Result.fail(429, "系统繁忙，视频上传过于频繁，请稍后重试");
+        } catch (BusinessException e) {
+            return Result.fail(e.getErrorCode(), e.getMessage());
         } catch (Exception e) {
             e.printStackTrace();
             return Result.error();
+        } finally {
+            // 🔥 确保退出 Sentinel 上下文
+            if (entry != null) {
+                entry.exit();
+            }
+            if (conn != null && !TransactionManager.hasActiveTransaction()) {
+                ConnectionPool.returnConnection(conn);
+            }
         }
     }
 
@@ -117,22 +229,23 @@ public class VideoServiceImpl implements VideoService {
             if (cachedVideo != null) {
                 video = JSON.parseObject(cachedVideo, VideoInfo.class);
             } else {
-                // 2. 缓存没有，查数据库
+                // 2. 缓存没有，查数据库（主表）
                 video = videoDao.selectById(id);
                 if (video != null) {
-                    // 注意：这里先存缓存，保证后续请求能拿到基础数据
+                    // 🔥 3. 垂直分表：单独查询 description 大字段
+                    String description = getVideoDescription(id);
+                    video.setDescription(description);
+
+                    // 4. 写入缓存（TTL 30 分钟）
                     RedisUtil.setex(cacheKey, CACHE_EXPIRE_SECONDS, JSON.toJSONString(video));
                 }
             }
 
             if (video != null) {
-                // 3.  防刷逻辑：只有有效观看才增加数据库计数
+                // 5. 防刷逻辑：只有有效观看才增加数据库计数
                 if (viewerId != null && ViewCounterUtil.recordValidView(viewerId, id)) {
                     videoDao.incrementViewCount(id);
                     System.out.println(" Valid view recorded for user: " + viewerId + ", video: " + id);
-
-                    // 4. 可选：异步更新缓存中的 viewCount，或者干脆让缓存过期后自动从 DB 拉取最新值
-                    // 为了简单起见，建议这里不直接改缓存对象，而是让缓存过期后重新查库
                 }
 
                 return Result.success("Query successful", video);
@@ -144,6 +257,62 @@ public class VideoServiceImpl implements VideoService {
             return Result.error();
         }
     }
+
+    /**
+     * 保存视频描述到垂直分表
+     * @param conn 数据库连接
+     * @param videoId 视频ID
+     * @param description 视频描述
+     */
+    private void saveVideoDescription(Connection conn, Long videoId, String description) {
+        String sql = "INSERT INTO video_info_detail (video_id, description) VALUES (?, ?) " +
+                "ON DUPLICATE KEY UPDATE description = VALUES(description)";
+        try (PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, videoId);
+            ps.setString(2, description);
+            ps.executeUpdate();
+
+            LogUtil.logBusiness(logger, "VIDEO_DESCRIPTION_SAVED",
+                    "Video " + videoId + " description saved to sharding table");
+        } catch (SQLException e) {
+            LogUtil.logError(logger, "保存视频描述失败: videoId=" + videoId, e);
+            // 不抛出异常，description 保存失败不影响主流程
+        }
+    }
+
+    /**
+     * 从垂直分表中获取视频描述
+     * @param videoId 视频ID
+     * @return 视频描述，如果没有则返回 null
+     */
+    private String getVideoDescription(Long videoId) {
+        Connection conn = null;
+        try {
+            conn = ConnectionPool.getConnection();
+            String sql = "SELECT description FROM video_info_detail WHERE video_id = ?";
+            PreparedStatement ps = conn.prepareStatement(sql);
+            ps.setLong(1, videoId);
+            ResultSet rs = ps.executeQuery();
+
+            String description = null;
+            if (rs.next()) {
+                description = rs.getString("description");
+            }
+
+            rs.close();
+            ps.close();
+            return description;
+
+        } catch (SQLException e) {
+            LogUtil.logError(logger, "查询视频描述失败: videoId=" + videoId, e);
+            return null;
+        } finally {
+            if (conn != null) {
+                ConnectionPool.returnConnection(conn);
+            }
+        }
+    }
+
 
     @Override
     public Result<List<VideoInfo>> getVideoList(int pageNum, int pageSize) {
@@ -555,7 +724,7 @@ public class VideoServiceImpl implements VideoService {
         }
     }
 
-        @Transactional
+    @Transactional
     public Result<Void> clearCache(Long videoId) {
         Connection conn = null;
         try {
@@ -660,5 +829,109 @@ public class VideoServiceImpl implements VideoService {
 
     private void clearVideoCache(Long videoId) {
         RedisUtil.del(VIDEO_CACHE_PREFIX + videoId);
+    }
+
+    private String validateCouponActivity(CouponActivityDTO dto, Long videoId) {
+        if (dto.getActivityType() == null) {
+            return "活动类型不能为空";
+        }
+
+        if (dto.getActivityType() == 0) {
+            return null;
+        }
+
+        if (dto.getTitle() == null || dto.getTitle().trim().isEmpty()) {
+            return "活动标题不能为空";
+        }
+
+        if (dto.getDiscountContent() == null || dto.getDiscountContent().trim().isEmpty()) {
+            return "优惠内容不能为空";
+        }
+
+        if (dto.getTotalStock() == null || dto.getTotalStock() <= 0) {
+            return "总库存必须大于0";
+        }
+
+        if (dto.getStartTime() == null || dto.getEndTime() == null) {
+            return "开始时间和结束时间不能为空";
+        }
+
+        LocalDateTime startTime = LocalDateTime.parse(dto.getStartTime(), DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+        LocalDateTime endTime = LocalDateTime.parse(dto.getEndTime(), DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+        LocalDateTime now = LocalDateTime.now();
+
+        if (startTime.isBefore(now)) {
+            return "开始时间不能早于当前时间";
+        }
+
+        if (startTime.isAfter(endTime)) {
+            return "开始时间不能晚于结束时间";
+        }
+
+        switch (dto.getActivityType()) {
+            case 1:
+                return null;
+
+            case 2:
+                if (dto.getBatches() == null || dto.getBatches().size() < 2) {
+                    return "分批次模式至少需要配置2个批次";
+                }
+
+                int totalBatchStock = dto.getBatches().stream()
+                        .mapToInt(CouponActivityDTO.BatchConfigDTO::getStockCount)
+                        .sum();
+
+                if (totalBatchStock != dto.getTotalStock()) {
+                    return "各批次库存之和必须等于总库存";
+                }
+
+                LocalDateTime lastReleaseTime = null;
+                for (CouponActivityDTO.BatchConfigDTO batch : dto.getBatches()) {
+                    LocalDateTime releaseTime = LocalDateTime.parse(batch.getReleaseTime(), DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+
+                    if (releaseTime.isBefore(startTime) || releaseTime.isAfter(endTime)) {
+                        return "批次释放时间必须在活动时间内";
+                    }
+
+                    if (lastReleaseTime != null && !releaseTime.isAfter(lastReleaseTime)) {
+                        return "批次释放时间必须递增";
+                    }
+
+                    lastReleaseTime = releaseTime;
+                }
+                return null;
+
+            case 3:
+                if (dto.getLotteryConfig() == null) {
+                    return "抽签模式必须配置抽签信息";
+                }
+
+                LocalDateTime lotteryTime = LocalDateTime.parse(
+                        dto.getLotteryConfig().getLotteryTime(),
+                        DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+                );
+
+                if (!lotteryTime.isAfter(endTime)) {
+                    return "开奖时间必须在活动结束后";
+                }
+
+                if (dto.getLotteryConfig().getWinnerCount() == null || dto.getLotteryConfig().getWinnerCount() <= 0) {
+                    return "中签人数必须大于0";
+                }
+
+                if (dto.getLotteryConfig().getWinnerCount() > dto.getTotalStock()) {
+                    return "中签人数不能超过总库存";
+                }
+                return null;
+
+            case 4:
+                if (dto.getRequiredWatchSeconds() == null || dto.getRequiredWatchSeconds() < 10) {
+                    return "观看解锁模式需设置观看时长（至少10秒）";
+                }
+                return null;
+
+            default:
+                return "无效的活动类型";
+        }
     }
 }

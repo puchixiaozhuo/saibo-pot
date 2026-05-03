@@ -26,6 +26,9 @@ public class CouponBatch {
     @Column("release_time")
     private LocalDateTime releaseTime;
 
+    @Column("actual_release_time")
+    private LocalDateTime actualReleaseTime;
+
     @Column("status")
     private Integer status;
 

@@ -11,6 +11,7 @@ import redis.clients.jedis.JedisPoolConfig;
 import java.io.IOException;
 import java.io.InputStream;
 import java.sql.*;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
 import java.util.logging.Logger;
@@ -291,5 +292,170 @@ public class RedisUtil {
             close(jedis);
         }
     }
-}
 
+    /**
+     * 执行 Lua 脚本（保证原子性操作）
+     * @param script Lua 脚本
+     * @param keys Redis键列表
+     * @param args 参数列表
+     * @return 执行结果
+     */
+    public static Object eval(String script, List<String> keys, List<String> args) {
+        Jedis jedis = null;
+        try {
+            jedis = getJedis();
+            return jedis.eval(script, keys, args);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        } finally {
+            close(jedis);
+        }
+    }
+
+    /**
+     * 执行 Lua 脚本（简化版 - 单个key）
+     * @param script Lua 脚本
+     * @param key Redis键
+     * @param args 参数列表
+     * @return 执行结果
+     */
+    public static Object eval(String script, String key, String... args) {
+        List<String> keys = Arrays.asList(key);
+        List<String> argList = Arrays.asList(args);
+        return eval(script, keys, argList);
+    }
+
+    /**
+     * Hash: 获取哈希表中指定字段的值
+     * @param key 键
+     * @param field 字段名
+     * @return 字段值，不存在返回 null
+     */
+    public static String hget(String key, String field) {
+        Jedis jedis = null;
+        try {
+            jedis = getJedis();
+            return jedis.hget(key, field);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        } finally {
+            close(jedis);
+        }
+    }
+
+    /**
+     * Hash: 设置哈希表中字段的值
+     * @param key 键
+     * @param field 字段名
+     * @param value 字段值
+     * @return 操作结果
+     */
+    public static Long hset(String key, String field, String value) {
+        Jedis jedis = null;
+        try {
+            jedis = getJedis();
+            return jedis.hset(key, field, value);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return 0L;
+        } finally {
+            close(jedis);
+        }
+    }
+
+    /**
+     * Hash: 批量设置哈希表字段
+     * @param key 键
+     * @param hash 字段-值映射
+     * @return 操作结果
+     */
+    public static String hmset(String key, java.util.Map<String, String> hash) {
+        Jedis jedis = null;
+        try {
+            jedis = getJedis();
+            return jedis.hmset(key, hash);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        } finally {
+            close(jedis);
+        }
+    }
+
+    /**
+     * Hash: 批量获取哈希表字段
+     * @param key 键
+     * @param fields 字段名数组
+     * @return 字段值列表
+     */
+    public static List<String> hmget(String key, String... fields) {
+        Jedis jedis = null;
+        try {
+            jedis = getJedis();
+            return jedis.hmget(key, fields);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return java.util.Collections.emptyList();
+        } finally {
+            close(jedis);
+        }
+    }
+
+    /**
+     * Hash: 删除哈希表中一个或多个字段
+     * @param key 键
+     * @param fields 字段名数组
+     * @return 删除的字段数量
+     */
+    public static Long hdel(String key, String... fields) {
+        Jedis jedis = null;
+        try {
+            jedis = getJedis();
+            return jedis.hdel(key, fields);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return 0L;
+        } finally {
+            close(jedis);
+        }
+    }
+
+    /**
+     * Hash: 判断哈希表中是否存在指定字段
+     * @param key 键
+     * @param field 字段名
+     * @return true-存在，false-不存在
+     */
+    public static Boolean hexists(String key, String field) {
+        Jedis jedis = null;
+        try {
+            jedis = getJedis();
+            return jedis.hexists(key, field);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        } finally {
+            close(jedis);
+        }
+    }
+
+    /**
+     * Hash: 获取哈希表中所有字段和值
+     * @param key 键
+     * @return 字段-值映射
+     */
+    public static java.util.Map<String, String> hgetAll(String key) {
+        Jedis jedis = null;
+        try {
+            jedis = getJedis();
+            return jedis.hgetAll(key);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return java.util.Collections.emptyMap();
+        } finally {
+            close(jedis);
+        }
+    }
+}

@@ -98,9 +98,27 @@ public class VideoDaoImpl extends BaseDaoImpl<VideoInfo> implements VideoDao {
         Connection conn = null;
         try {
             conn = ConnectionPool.getConnection();
-            return findByPage(conn, pageNum, pageSize);
+
+            // 🔥 垂直分表优化：明确指定字段，排除 description
+            String sql = "SELECT id, author_id, title, cover, video_url, duration, file_size, " +
+                    "format, resolution, cache_status, transcode_status, category_id, " +
+                    "view_count, like_count, comment_count, favorite_count, " +
+                    "create_time, update_time, is_delete " +
+                    "FROM video_info WHERE is_delete = 0 ORDER BY create_time DESC LIMIT ? OFFSET ?";
+
+            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                pstmt.setInt(1, pageSize);
+                pstmt.setInt(2, (pageNum - 1) * pageSize);
+
+                try (ResultSet rs = pstmt.executeQuery()) {
+                    List<VideoInfo> list = mapResultSetToList(rs);
+                    System.out.println("✅ selectAll 查询到 " + list.size() + " 条记录（不含 description）");
+                    return list;
+                }
+            }
         } catch (Exception e) {
             LogUtil.logError(logger, "查询视频列表失败", e);
+            e.printStackTrace();
             throw new DatabaseException("查询视频列表失败", e);
         } finally {
             if (conn != null) {
@@ -114,10 +132,23 @@ public class VideoDaoImpl extends BaseDaoImpl<VideoInfo> implements VideoDao {
         Connection conn = null;
         try {
             conn = ConnectionPool.getConnection();
-            Map<String, Object> conditions = new HashMap<>();
-            conditions.put("author_id", authorId);
-            conditions.put("is_delete", 0);
-            return findByCondition(conn, conditions);
+
+            // 🔥 垂直分表优化：明确指定字段，排除 description
+            String sql = "SELECT id, author_id, title, cover, video_url, duration, file_size, " +
+                    "format, resolution, cache_status, transcode_status, category_id, " +
+                    "view_count, like_count, comment_count, favorite_count, " +
+                    "create_time, update_time, is_delete " +
+                    "FROM video_info WHERE author_id = ? AND is_delete = 0 ORDER BY create_time DESC LIMIT ? OFFSET ?";
+
+            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                pstmt.setLong(1, authorId);
+                pstmt.setInt(2, pageSize);
+                pstmt.setInt(3, (pageNum - 1) * pageSize);
+
+                try (ResultSet rs = pstmt.executeQuery()) {
+                    return mapResultSetToList(rs);
+                }
+            }
         } catch (Exception e) {
             LogUtil.logError(logger, "根据作者ID查询视频失败: authorId=" + authorId, e);
             throw new DatabaseException("根据作者ID查询视频失败", e);
@@ -133,10 +164,23 @@ public class VideoDaoImpl extends BaseDaoImpl<VideoInfo> implements VideoDao {
         Connection conn = null;
         try {
             conn = ConnectionPool.getConnection();
-            Map<String, Object> conditions = new HashMap<>();
-            conditions.put("category_id", categoryId);
-            conditions.put("is_delete", 0);
-            return findByCondition(conn, conditions);
+
+            // 🔥 垂直分表优化：明确指定字段，排除 description
+            String sql = "SELECT id, author_id, title, cover, video_url, duration, file_size, " +
+                    "format, resolution, cache_status, transcode_status, category_id, " +
+                    "view_count, like_count, comment_count, favorite_count, " +
+                    "create_time, update_time, is_delete " +
+                    "FROM video_info WHERE category_id = ? AND is_delete = 0 ORDER BY create_time DESC LIMIT ? OFFSET ?";
+
+            try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+                pstmt.setLong(1, categoryId);
+                pstmt.setInt(2, pageSize);
+                pstmt.setInt(3, (pageNum - 1) * pageSize);
+
+                try (ResultSet rs = pstmt.executeQuery()) {
+                    return mapResultSetToList(rs);
+                }
+            }
         } catch (Exception e) {
             LogUtil.logError(logger, "根据分类ID查询视频失败: categoryId=" + categoryId, e);
             throw new DatabaseException("根据分类ID查询视频失败", e);
@@ -152,7 +196,13 @@ public class VideoDaoImpl extends BaseDaoImpl<VideoInfo> implements VideoDao {
         Connection conn = null;
         try {
             conn = ConnectionPool.getConnection();
-            String sql = "SELECT * FROM video_info WHERE title LIKE ? AND is_delete = 0 ORDER BY create_time DESC LIMIT ? OFFSET ?";
+
+            // 🔥 垂直分表优化：明确指定字段，排除 description
+            String sql = "SELECT id, author_id, title, cover, video_url, duration, file_size, " +
+                    "format, resolution, cache_status, transcode_status, category_id, " +
+                    "view_count, like_count, comment_count, favorite_count, " +
+                    "create_time, update_time, is_delete " +
+                    "FROM video_info WHERE title LIKE ? AND is_delete = 0 ORDER BY create_time DESC LIMIT ? OFFSET ?";
 
             try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
                 pstmt.setString(1, "%" + keyword + "%");
@@ -172,6 +222,7 @@ public class VideoDaoImpl extends BaseDaoImpl<VideoInfo> implements VideoDao {
             }
         }
     }
+
 
     @Override
     public int countAll() {
@@ -599,50 +650,69 @@ public class VideoDaoImpl extends BaseDaoImpl<VideoInfo> implements VideoDao {
 
 
     /**
-     * 将 ResultSet 映射为实体列表
-     */
-    private List<VideoInfo> mapResultSetToList(ResultSet rs) throws SQLException {
-        List<VideoInfo> list = new java.util.ArrayList<>();
-        while (rs.next()) {
-            try {
-                list.add(mapResultSetToEntity(rs));
-            } catch (Exception e) {
-                LogUtil.logError(logger, "映射单条记录失败", e);
-            }
-        }
-        return list;
-    }
-
-
-    /**
-     * 将 ResultSet 映射为单个实体
+     * 将 ResultSet 映射为单个实体（完整版，包含 description）
+     * 用于详情查询
      */
     private VideoInfo mapResultSetToEntity(ResultSet rs) throws SQLException {
+        VideoInfo video = mapResultSetToEntityLite(rs);
+
+        // 加载 description（如果存在）
         try {
-            VideoInfo video = new VideoInfo();
-            video.setId(rs.getLong("id"));
-            video.setAuthorId(rs.getLong("author_id"));
-            video.setTitle(rs.getString("title"));
             video.setDescription(rs.getString("description"));
-            video.setVideoUrl(rs.getString("video_url"));
-            video.setCover(rs.getString("cover"));
-            video.setCategoryId(rs.getLong("category_id"));
-            video.setResolution(rs.getString("resolution"));
-            video.setFileSize(rs.getLong("file_size"));
-            video.setFormat(rs.getString("format"));
-            video.setDuration(rs.getInt("duration"));
-            video.setViewCount(rs.getLong("view_count"));
-            video.setLikeCount(rs.getLong("like_count"));
-            video.setCommentCount(rs.getLong("comment_count"));
-            video.setCacheStatus(rs.getInt("cache_status"));
-            video.setTranscodeStatus(rs.getInt("transcode_status"));
-            video.setIsDelete(rs.getInt("is_delete"));
-            video.setCreateTime(rs.getTimestamp("create_time").toLocalDateTime());
-            video.setUpdateTime(rs.getTimestamp("update_time").toLocalDateTime());
-            return video;
         } catch (SQLException e) {
-            LogUtil.logError(logger, "映射ResultSet失败", e);
-            throw e;
+            video.setDescription(null);
         }
+
+        return video;
+    }
+
+    /**
+     * 将 ResultSet 映射为单个实体（轻量版，不含 description）
+     * 用于列表查询
+     */
+    private VideoInfo mapResultSetToEntityLite(ResultSet rs) throws SQLException {
+        VideoInfo video = new VideoInfo();
+        video.setId(rs.getLong("id"));
+        video.setAuthorId(rs.getLong("author_id"));
+        video.setTitle(rs.getString("title"));
+        video.setDescription(null); // 列表查询不加载 description
+        video.setVideoUrl(rs.getString("video_url"));
+        video.setCover(rs.getString("cover"));
+        video.setCategoryId(rs.getLong("category_id"));
+        video.setResolution(rs.getString("resolution"));
+        video.setFileSize(rs.getLong("file_size"));
+        video.setFormat(rs.getString("format"));
+        video.setDuration(rs.getInt("duration"));
+        video.setViewCount(rs.getLong("view_count"));
+        video.setLikeCount(rs.getLong("like_count"));
+        video.setCommentCount(rs.getLong("comment_count"));
+        video.setCacheStatus(rs.getInt("cache_status"));
+        video.setTranscodeStatus(rs.getInt("transcode_status"));
+        video.setFavoriteCount(rs.getLong("favorite_count"));
+        video.setIsDelete(rs.getInt("is_delete"));
+
+        java.sql.Timestamp createTime = rs.getTimestamp("create_time");
+        if (createTime != null) {
+            video.setCreateTime(createTime.toLocalDateTime());
+        }
+
+        java.sql.Timestamp updateTime = rs.getTimestamp("update_time");
+        if (updateTime != null) {
+            video.setUpdateTime(updateTime.toLocalDateTime());
+        }
+
+        return video;
+    }
+
+    /**
+     * 将 ResultSet 映射为列表
+     */
+    private List<VideoInfo> mapResultSetToList(ResultSet rs) throws SQLException {
+        List<VideoInfo> list = new ArrayList<>();
+        while (rs.next()) {
+            // 🔥 默认使用轻量版映射（适用于列表查询）
+            list.add(mapResultSetToEntityLite(rs));
+        }
+        return list;
     }
 }

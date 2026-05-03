@@ -16,7 +16,7 @@ public interface VideoService {
      * @param coverFileName 封面文件名
      * @return 上传结果
      */
-    Result<Map<String, Object>> uploadVideo(VideoInfo video, byte[] videoBytes, String fileName, byte[] coverBytes, String coverFileName);
+      Result<Map<String, Object>> uploadVideo(VideoInfo video, byte[] videoBytes, String fileName, byte[] coverBytes, String coverFileName, String couponActivityJson);
 
     /**
      * 根据ID获取视频详情（带防刷播放量统计）

@@ -1,6 +1,9 @@
 package com.xiaozhuo.config;
 
 import com.xiaozhuo.ioc.ApplicationContext;
+import com.xiaozhuo.mq.consumer.CouponGrabConsumer;
+import com.xiaozhuo.mq.consumer.FeedPushConsumer;
+import com.xiaozhuo.task.CouponBatchReleaseTask;
 import com.xiaozhuo.task.CouponLotteryTask;
 import com.xiaozhuo.util.LogUtil;
 
@@ -35,6 +38,15 @@ public class AppStartupListener implements ServletContextListener {
         // 🚀 启动优惠券抽签定时任务
         CouponLotteryTask.start();
 
+        // 🚀 启动 Feed 推送消费者
+        FeedPushConsumer.start();
+
+        // 🚀 启动优惠券抢购消费者（削峰）
+        CouponGrabConsumer.start();
+
+        // 🚀 启动优惠券批次自动释放定时任务
+        CouponBatchReleaseTask.start();
+
         System.out.println("========================================");
         System.out.println("Application Started Successfully!");
         System.out.println("========================================");
@@ -46,6 +58,10 @@ public class AppStartupListener implements ServletContextListener {
 
         // 🛑 停止定时任务
         CouponLotteryTask.stop();
+        CouponBatchReleaseTask.stop();
+
+        // 关闭 RocketMQ
+        com.xiaozhuo.util.RocketMQUtil.shutdown();
 
         logger.info("Application stopped");
     }

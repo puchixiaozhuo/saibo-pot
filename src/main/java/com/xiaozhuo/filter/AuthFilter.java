@@ -205,12 +205,15 @@ public class AuthFilter implements Filter {
             e.printStackTrace();
             return false;
         } finally {
-            JDBCUtil.close(conn, null);
+            if (conn != null) {
+                JDBCUtil.returnToPool(conn);
+            }
         }
 
         System.out.println("[AuthFilter] Ownership Check END: No matching resource type, returning false");
         return false;
     }
+
     private static class PermissionCheckResult {
         String requiredPermission;
         boolean needOwnerCheck;
@@ -266,4 +269,3 @@ public class AuthFilter implements Filter {
         System.out.println("AuthFilter 销毁");
     }
 }
-

@@ -46,12 +46,12 @@ public class JDBCUtil {
     }
 
     /**
-     * 获取数据库连接
+     * 获取数据库连接（从连接池获取，推荐使用）
      * @return 数据库连接对象
      * @throws SQLException 连接失败抛出异常
      */
     public static Connection getConnection() throws SQLException {
-        return DriverManager.getConnection(url, username, password);
+        return ConnectionPool.getConnection();
     }
 
 
@@ -65,14 +65,15 @@ public class JDBCUtil {
     }
 
     /**
-     * 从连接池获取数据库连接（推荐使用）
+     * 从连接池获取数据库连接（已废弃，请使用 getConnection()）
      * @return 数据库连接对象
      * @throws SQLException 连接失败抛出异常
+     * @deprecated 请使用 getConnection() 代替
      */
+    @Deprecated
     public static Connection getConnectionFromPool() throws SQLException {
         return ConnectionPool.getConnection();
     }
-
     /**
      * 归还连接到连接池
      * @param conn 要归还的连接
